@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Medical Cases</title>
+<style>
+body { font-family: system-ui, Arial, sans-serif; margin:0; background:#f6f6f6; }
+header { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background:#fff; border-bottom:1px solid #ccc; }
+header h1 { margin:0; font-size:1.2em; }
+header button { padding:6px 10px; border:none; background:#0d6efd; color:#fff; border-radius:6px; cursor:pointer; }
+header button:hover { background:#0b5ed7; }
+
+#uploadPanel { background:#fff; margin:10px auto; padding:20px; border-radius:8px; max-width:700px; box-shadow:0 2px 5px rgba(0,0,0,0.1); }
+#uploadPanel input, #uploadPanel textarea { width:100%; margin-bottom:10px; padding:6px; border:1px solid #ccc; border-radius:4px; font-size:1em; }
+#uploadPanel input[type=file] { padding:3px; }
+#uploadPanel button { padding:6px 12px; background:#0d6efd; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+#uploadPanel button:hover { background:#0b5ed7; }
+
+#casesContainer { display:flex; flex-wrap:wrap; gap:12px; margin:20px; justify-content:center; }
+
+.case-card { background:#fff; padding:12px; border-radius:8px; width:220px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer; position:relative; }
+.case-card.new::after { content:"NEW"; position:absolute; top:6px; right:6px; background:#dc3545; color:#fff; font-size:0.7em; padding:2px 6px; border-radius:4px; }
+.case-card h3 { margin:0 0 6px 0; font-size:1em; }
+.case-card p { margin:0; font-size:0.8em; color:#555; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Medical Cases</h1>
+  <button onclick="location.href='roster.html'">Back to Roster</button>
+</header>
+
+<div id="uploadPanel">
+  <input type="text" id="caseTitle" placeholder="Case Title" />
+  <textarea id="caseNotes" placeholder="Notes..." rows="4"></textarea>
+  <input type="file" id="casePDF" accept=".pdf" />
+  <input type="file" id="caseImage" accept="image/*" />
+  <button id="uploadCaseBtn">Upload Case</button>
+</div>
+
+<div id="casesContainer"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
+
+// ---------- Firebase Setup ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyD3e8G3s9Hwk5Kf6Ay3L58RTjyAkL-xr4I",
+  authDomain: "medical-cases-c4809.firebaseapp.com",
+  projectId: "medical-cases-c4809",
+  storageBucket: "medical-cases-c4809.appspot.com",
+  messagingSenderId: "591206005422",
+  appId: "1:591206005422:web:7834dc84e5eebd4b4b8b3f",
+  measurementId: "G-B6P6BG0D9K"
+};
+
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
+
+// ---------- DOM ----------
+const uploadBtn = document.getElementById('uploadCaseBtn');
+const casesContainer = document.getElementById('casesContainer');
+
+// ---------- Upload Case ----------
+uploadBtn.addEventListener('click', async () => {
+  const title = document.getElementById('caseTitle').value.trim();
+  const notes = document.getElementById('caseNotes').value.trim();
+  const pdfFile = document.getElementById('casePDF').files[0];
+  const imgFile = document.getElementById('caseImage').files[0];
+
+  if(!title) return alert("Enter a case title");
+
+  const timestamp = Date.now();
+  let pdfURL = "", imgURL = "";
+
+  try {
+    if(pdfFile){
+      const pdfRef = ref(storage, `cases/${timestamp}_${pdfFile.name}`);
+      await uploadBytes(pdfRef, pdfFile);
+      pdfURL = await getDownloadURL(pdfRef);
+    }
+
+    if(imgFile){
+      const imgRef = ref(storage, `cases/${timestamp}_${imgFile.name}`);
+      await uploadBytes(imgRef, imgFile);
+      imgURL = await getDownloadURL(imgRef);
+    }
+
+    await addDoc(collection(db,'cases'), {title, notes, pdfURL, imgURL, timestamp});
+
+    // Clear inputs
+    document.getElementById('caseTitle').value="";
+    document.getElementById('caseNotes').value="";
+    document.getElementById('casePDF').value="";
+    document.getElementById('caseImage').value="";
+  } catch(err){
+    console.error(err);
+    alert("Upload failed: " + err.message);
+  }
+});
+
+// ---------- Render Cases ----------
+const q = query(collection(db,'cases'), orderBy('timestamp','desc'));
+onSnapshot(q, snapshot=>{
+  casesContainer.innerHTML='';
+  snapshot.forEach(docSnap=>{
+    const data = docSnap.data();
+    const card = document.createElement('div');
+    card.className='case-card new';
+    card.innerHTML=`<h3>${data.title}</h3><p>${new Date(data.timestamp).toLocaleString()}</p>`;
+    card.addEventListener('click',()=>{
+      localStorage.setItem('selectedCaseId', docSnap.id);
+      location.href='case-detail.html';
+    });
+    casesContainer.appendChild(card);
+  });
+});
+</script>
+</body>
+</html>
