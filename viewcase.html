@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>View Medical Case</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    padding: 20px;
+  }
+  header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+  #logo {
+    height: 50px;
+    margin-bottom: 8px;
+  }
+  #controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  #adminCode {
+    padding: 4px 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    width: 120px;
+    font-size: 14px;
+  }
+  #homeBtn {
+    padding: 5px 12px;
+    background: orange;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: black;
+  }
+  #caseInfo {
+    white-space: pre-wrap;
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 80px;
+    margin-top: 15px;
+    border: 1px solid #f5f5f5;   
+    padding: 12px;
+    border-radius: 5px;
+    background: #f5f5f5;           
+  }
+  #filesContainer {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding: 5px 0;
+    margin-bottom: 15px;
+  }
+  #filesContainer img, #filesContainer iframe {
+    max-height: 250px;
+    max-width: 250px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    flex-shrink: 0;
+  }
+  .file-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .file-link {
+    display: block;
+    color: orange;
+    text-decoration: none;
+    margin-top: 5px;
+    font-weight: bold;
+  }
+  #formattingBtns {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+  }
+  #formattingBtns button {
+    padding: 5px 10px;
+    background: white;
+    color: black;
+    border: 1px solid orange;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    min-width: 60px;
+  }
+  #saveChangesBtn {
+    margin-top: 10px;
+    padding: 6px 12px;
+    background: orange;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img id="logo" src="onehealth-logo.png" alt="OneHealth Logo">
+  <div id="controls">
+    <input type="text" id="adminCode" placeholder="Code">
+    <button id="homeBtn" onclick="window.location.href='index.html'">Home</button>
+  </div>
+</header>
+
+<h1 id="caseTitle">Loading...</h1>
+
+<div id="filesContainer"></div>
+
+<div id="formattingBtns" style="display:none;">
+  <button onclick="applyFormat('bold')">Bold</button>
+  <button onclick="applyFormat('italic')">Italic</button>
+  <button onclick="applyFormat('underline')">Underline</button>
+  <button onclick="applyFormat('highlight')">Highlight</button>
+</div>
+
+<div id="caseInfo" contenteditable="false"></div>
+<button id="saveChangesBtn">Save Changes</button>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<script>
+window.onload = async () => {
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3e8G3s9Hwk5Kf6Ay3L58RTjyAkL-xr4I",
+    authDomain: "medical-cases-c4809.firebaseapp.com",
+    projectId: "medical-cases-c4809",
+    storageBucket: "medical-cases-c4809.appspot.com",
+    messagingSenderId: "591206005422",
+    appId: "1:591206005422:web:7834dc84e5eebd4b4b8b3f"
+  };
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const caseId = urlParams.get('caseId');
+  if (!caseId) { alert('No case selected'); return; }
+
+  try {
+    const doc = await db.collection('MedicalCases').doc(caseId).get();
+    if (!doc.exists) { alert('Case not found'); return; }
+
+    const data = doc.data();
+    document.getElementById('caseTitle').textContent = data.title;
+
+    const filesContainer = document.getElementById('filesContainer');
+    filesContainer.innerHTML = '';
+
+    if (data.files && data.files.length) {
+      data.files.forEach(file => {
+        if (file.type === 'image') {
+          const img = document.createElement('img');
+          img.src = file.url;
+          img.style.maxHeight = '250px';
+          img.style.borderRadius = '8px';
+          img.style.border = '1px solid #ccc';
+          filesContainer.appendChild(img);
+        } else if (file.type === 'pdf') {
+          const wrapper = document.createElement('div');
+          wrapper.style.display = 'flex';
+          wrapper.style.flexDirection = 'column';
+          wrapper.style.alignItems = 'center';
+          wrapper.style.gap = '5px';
+
+          // Try to show PDF preview
+          let previewUrl;
+          try {
+            const pdfPublicId = file.url.split('/').pop().split('.')[0];
+            previewUrl = `https://res.cloudinary.com/dsc0hziur/image/upload/f_jpg,pg_1,q_auto,w_250/${pdfPublicId}.pdf`;
+          } catch {
+            previewUrl = '';
+          }
+
+          if (previewUrl) {
+            const img = document.createElement('img');
+            img.src = previewUrl;
+            img.style.maxHeight = '250px';
+            img.style.borderRadius = '8px';
+            img.style.border = '1px solid #ccc';
+            wrapper.appendChild(img);
+          }
+
+          const btn = document.createElement('button');
+          btn.textContent = 'View PDF';
+          btn.style.padding = '4px 8px';
+          btn.style.background = 'orange';
+          btn.style.color = 'white';
+          btn.style.border = 'none';
+          btn.style.borderRadius = '4px';
+          btn.style.cursor = 'pointer';
+          btn.onclick = () => window.open(file.url, '_blank');
+          wrapper.appendChild(btn);
+
+          filesContainer.appendChild(wrapper);
+        }
+      });
+    }
+
+    document.getElementById('caseInfo').innerHTML = data.info || '';
+
+  } catch (err) {
+    console.error('Error loading case:', err);
+    alert('Failed to load case. Check console.');
+  }
+};
+
+// Admin code to show formatting
+// Admin code to enable editing and show save button
+document.getElementById('adminCode').addEventListener('input', (e) => {
+  const isAdmin = e.target.value === 'MED122';
+  const caseInfoDiv = document.getElementById('caseInfo');
+  const saveBtn = document.getElementById('saveChangesBtn');
+  const caseTitle = document.getElementById('caseTitle');
+
+  // Enable content editable
+  caseInfoDiv.contentEditable = isAdmin ? 'true' : 'false';
+  caseInfoDiv.style.border = isAdmin ? '1px solid #ccc' : 'none';
+  
+  // Show formatting buttons and save button
+  document.getElementById('formattingBtns').style.display = isAdmin ? 'flex' : 'none';
+  saveBtn.style.display = isAdmin ? 'inline-block' : 'none';
+
+  // Make title editable too
+  caseTitle.contentEditable = isAdmin ? 'true' : 'false';
+  caseTitle.style.borderBottom = isAdmin ? '1px dashed #ccc' : 'none';
+});
+
+// Formatting functions
+function applyFormat(cmd) {
+  const caseInfoDiv = document.getElementById('caseInfo');
+  caseInfoDiv.focus(); // <- ensure execCommand works
+  if (cmd === 'highlight') {
+    document.execCommand('backColor', false, 'yellow');
+  } else {
+    document.execCommand(cmd, false, null);
+  }
+}
+
+// Save edited content (info + title)
+document.getElementById('saveChangesBtn').addEventListener('click', async () => {
+  const caseInfoDiv = document.getElementById('caseInfo');
+  const caseTitle = document.getElementById('caseTitle');
+
+  const updatedInfo = caseInfoDiv.innerHTML;
+  const updatedTitle = caseTitle.textContent;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const caseId = urlParams.get('caseId');
+  if (!caseId) { alert('No case selected'); return; }
+
+  try {
+    const db = firebase.firestore();
+    await db.collection('MedicalCases').doc(caseId).update({
+      info: updatedInfo,
+      title: updatedTitle
+    });
+    alert('Changes saved!');
+  } catch (err) {
+    console.error('Error saving changes:', err);
+    alert('Failed to save changes. See console.');
+  }
+});
+
+</script>
+
+
+</body>
+</html>

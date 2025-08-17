@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Recipients</title>
+<style>
+  body { font-family: Arial; background:#f5f5f5; padding:20px; }
+  h2 { text-align:center; }
+  #newEmail { width:100%; padding:6px; margin-bottom:8px; }
+  #saveEmail { width:100%; padding:6px; margin-bottom:12px; cursor:pointer; background:#4CAF50; color:#fff; border:none; border-radius:4px; }
+  #saveEmail:hover { background:#45a049; }
+  ul { list-style:none; padding:0; }
+  li { display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #ddd; }
+  button { cursor:pointer; font-size:12px; border:none; background:none; }
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<h2>Email Recipients</h2>
+<input type="text" id="newEmail" placeholder="Enter email address">
+<button id="saveEmail">Add Email</button>
+
+<ul id="emailList"></ul>
+
+<script>
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3e8G3s9Hwk5Kf6Ay3L58RTjyAkL-xr4I",
+    authDomain: "medical-cases-c4809.firebaseapp.com",
+    projectId: "medical-cases-c4809",
+    storageBucket: "medical-cases-c4809.appspot.com",
+    messagingSenderId: "591206005422",
+    appId: "1:591206005422:web:7834dc84e5eebd4b4b8b3f"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const newEmailInput = document.getElementById('newEmail');
+  const saveEmailBtn = document.getElementById('saveEmail');
+  const emailList = document.getElementById('emailList');
+
+  // Render all emails
+  async function renderEmails() {
+    emailList.innerHTML = '';
+    const snapshot = await db.collection('EmailRecipients').orderBy('email').get();
+    snapshot.docs.forEach(doc => {
+      const email = doc.data().email;
+      const li = document.createElement('li');
+
+      const span = document.createElement('span');
+      span.textContent = email;
+
+      const editBtn = document.createElement('button');
+      editBtn.textContent = '✏️';
+      editBtn.onclick = async () => {
+        const newEmail = prompt('Edit email:', email);
+        if(newEmail && newEmail !== email){
+          await db.collection('EmailRecipients').doc(email).delete();
+          await db.collection('EmailRecipients').doc(newEmail).set({ email: newEmail });
+          renderEmails();
+        }
+      };
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.onclick = async () => {
+        if(confirm(`Delete ${email}?`)){
+          await db.collection('EmailRecipients').doc(email).delete();
+          renderEmails();
+        }
+      };
+
+      li.appendChild(span);
+      li.appendChild(editBtn);
+      li.appendChild(deleteBtn);
+      emailList.appendChild(li);
+    });
+  }
+
+  // Add new email
+  saveEmailBtn.addEventListener('click', async () => {
+    const email = newEmailInput.value.trim();
+    if(!email) return alert('Enter an email!');
+    try {
+      await db.collection('EmailRecipients').doc(email).set({ email });
+      newEmailInput.value = '';
+      renderEmails();
+    } catch(err) {
+      console.error(err);
+      alert('Failed to save email.');
+    }
+  });
+
+  // Initial load
+  renderEmails();
+</script>
+
+</body>
+</html>

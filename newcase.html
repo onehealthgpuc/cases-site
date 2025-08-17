@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>New Medical Case</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, sans-serif; background:#f7f7f7; margin:0; padding:0; }
+
+  /* Header */
+  header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:15px 30px;
+    background:#fff;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  }
+  header img { height:50px; }
+  header button { padding:8px 16px; font-size:14px; border:none; border-radius:5px; cursor:pointer; background:#ff6600; color:white; font-weight:bold; }
+
+  /* Main container */
+  main {
+    max-width:900px;
+    margin:30px auto;
+    padding:30px;
+    background:#fff;
+    border-radius:10px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);
+  }
+
+  /* Inputs */
+  .form-group { margin-bottom:20px; }
+  .form-group label { font-weight:bold; display:block; margin-bottom:8px; color:#333; }
+  input[type="text"], #noteInput {
+    width:100%;
+    padding:12px;
+    border-radius:6px;
+    border:1px solid #ccc;
+    font-size:16px;
+    box-sizing:border-box;
+  }
+  #noteInput { min-height:140px; outline:none; }
+
+  /* Toolbar */
+  #toolbar { margin-bottom:10px; }
+  #toolbar button {
+    margin-right:5px;
+    padding:6px 10px;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+    background:#fff;
+    color:#ff6600;
+    font-weight:bold;
+    box-shadow:0 1px 3px rgba(0,0,0,0.1);
+  }
+  #toolbar button.highlight { background:#ffeb3b; color:#333; }
+
+  /* File previews */
+  #previewContainer {
+    display:grid; 
+    grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); 
+    gap:15px; 
+    margin-top:15px;
+  }
+  .preview-wrapper {
+    border:1px solid #ddd;
+    border-radius:8px;
+    overflow:hidden;
+    background:#fafafa;
+    transition:transform 0.2s;
+  }
+  .preview-wrapper:hover { transform:scale(1.05); }
+  .preview-wrapper img { width:100%; height:120px; object-fit:contain; display:block; background:#f9f9f9; }
+
+  /* Save button */
+  #saveBtn { padding:12px 20px; font-size:16px; border:none; border-radius:6px; background:#ff6600; color:white; cursor:pointer; margin-top:20px; font-weight:bold; }
+  #saveBtn:hover { background:#e65c00; }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="onehealth-logo.png" alt="OneHealth Logo">
+  <button onclick="window.location.href='index.html'">Home</button>
+</header>
+
+<main>
+  <div class="form-group">
+    <label for="title">Case Title</label>
+    <input type="text" id="title" placeholder="Enter case title">
+  </div>
+
+  <div class="form-group">
+    <label for="info">Case Information</label>
+    <div id="toolbar">
+      <button type="button" onclick="formatText('bold')"><b>B</b></button>
+      <button type="button" onclick="formatText('italic')"><i>I</i></button>
+      <button type="button" onclick="formatText('underline')"><u>U</u></button>
+      <button type="button" class="highlight" onclick="formatText('hiliteColor','#ffff00')">H</button>
+    </div>
+    <div id="noteInput" contenteditable="true"></div>
+  </div>
+
+  <div class="form-group">
+    <label for="fileInput">Upload Files (Images / PDF)</label>
+    <input type="file" id="fileInput" multiple accept="image/*,application/pdf" />
+  </div>
+
+  <div id="previewContainer"></div>
+
+  <button id="saveBtn">Save Case</button>
+<p style="font-size:12px; color:#777; margin-top:5px; text-align:left;">
+  Ensure file has fully loaded before clicking Save.
+</p>
+
+</main>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+const cloudName = 'dsc0hziur';
+const imagePreset = 'medical_cases_upload';
+const pdfPreset = 'medical_cases_pdf_upload';
+
+const fileInput = document.getElementById('fileInput');
+const previewContainer = document.getElementById('previewContainer');
+const saveBtn = document.getElementById('saveBtn');
+const noteInput = document.getElementById('noteInput');
+let uploadedFiles = [];
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD3e8G3s9Hwk5Kf6Ay3L58RTjyAkL-xr4I",
+  authDomain: "medical-cases-c4809.firebaseapp.com",
+  projectId: "medical-cases-c4809",
+  storageBucket: "medical-cases-c4809.appspot.com",
+  messagingSenderId: "591206005422",
+  appId: "1:591206005422:web:7834dc84e5eebd4b4b8b3f",
+  measurementId: "G-B6P6BG0D9K"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function formatText(command,value=null){ document.execCommand(command,false,value); }
+
+async function uploadToCloudinary(file){
+  const isPdf = file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+  const endpoint = isPdf?'auto':'image';
+  const preset = isPdf?pdfPreset:imagePreset;
+  const formData = new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',preset);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${endpoint}/upload`,{method:'POST',body:formData});
+  const data = await res.json();
+  if(!res.ok||!data.secure_url) throw new Error(data.error?.message||res.statusText);
+  let previewUrl = data.secure_url;
+  if(isPdf) previewUrl=`https://res.cloudinary.com/${cloudName}/image/upload/f_jpg,pg_1,q_auto,w_800/${data.public_id}.pdf`;
+  return {name:file.name,url:previewUrl,type:isPdf?'pdf':'image'};
+}
+
+fileInput.addEventListener('change', async (e)=>{
+  previewContainer.innerHTML='';
+  uploadedFiles=[];
+  const files=Array.from(e.target.files||[]);
+  for(const file of files){
+    try{
+      const uploaded=await uploadToCloudinary(file);
+      uploadedFiles.push(uploaded);
+      const img=document.createElement('img'); img.src=uploaded.url; img.alt=uploaded.name;
+      const wrapper=document.createElement('div'); wrapper.className='preview-wrapper'; wrapper.appendChild(img);
+      const a=document.createElement('a'); a.href=uploaded.url; a.target='_blank'; a.rel='noopener noreferrer'; a.appendChild(wrapper);
+      previewContainer.appendChild(a);
+    }catch(err){console.error('Upload failed:',err); alert(`Upload failed for ${file.name}`);}
+  }
+});
+
+saveBtn.addEventListener('click', async ()=>{
+  const title=document.getElementById('title').value.trim();
+  const info=noteInput.innerHTML.trim();
+  if(!title) return alert('Title is required');
+  const filesForFirestore=(uploadedFiles||[]).map(f=>({name:f.name,url:f.url,type:f.type}));
+  try{
+    const docRef=await db.collection('MedicalCases').add({
+      title, info, files:filesForFirestore,
+      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+      isNew:true
+    });
+    alert('Case saved!');
+    window.location.href=`viewcase.html?caseId=${docRef.id}`;
+  }catch(err){console.error('Error saving case:',err); alert('Failed to save case.');}
+});
+</script>
+</body>
+</html>
