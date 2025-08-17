@@ -48,8 +48,10 @@
 </div>
 
 <!-- Search -->
-<input type="text" id="searchInput" placeholder="Search..." style="position:fixed; top:20px; left:20px; width:200px; padding:6px 10px; font-size:14px; border-radius:4px; border:1px solid #ccc; outline:none; z-index:1000;">
-
+<input type="text" id="searchInput" placeholder="Search..." style="position:fixed; top:20px; left:20px; width:180px; padding:6px 10px; font-size:14px; border-radius:4px; border:1px solid #ccc; outline:none; z-index:1000;">
+<button id="rosterBtn" style="position:fixed; top:55px; left:20px; width:200px; padding:6px 10px; font-size:14px; border-radius:4px; border:1px solid #d67a1e; background:white; color:black; cursor:pointer; z-index:1000;">
+  Roster
+</button>
 <div class="cards" id="casesContainer"></div>
 
 <!-- Firebase -->
@@ -243,6 +245,10 @@ window.onload = async () => {
   // --- Initial load ---
   loadCases();
 };
+document.getElementById('rosterBtn').addEventListener('click', () => {
+  window.location.href = 'https://onehealthgpuc.github.io/OHRoster/';
+});
+
 </script>
 
 
