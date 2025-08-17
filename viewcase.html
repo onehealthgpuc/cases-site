@@ -136,6 +136,11 @@
 
 <div id="caseInfo" contenteditable="false"></div>
 <button id="saveChangesBtn">Save Changes</button>
+<!-- Image Zoom Modal -->
+<div id="imgModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8); justify-content:center; align-items:center; z-index:1000;">
+  <img id="imgModalContent" src="" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 0 15px #000;">
+</div>
+
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -282,6 +287,22 @@ document.getElementById('saveChangesBtn').addEventListener('click', async () => 
     console.error('Error saving changes:', err);
     alert('Failed to save changes. See console.');
   }
+});
+// Zoom functionality
+const imgModal = document.getElementById('imgModal');
+const imgModalContent = document.getElementById('imgModalContent');
+
+document.getElementById('filesContainer').addEventListener('click', (e) => {
+  if (e.target.tagName === 'IMG') {
+    imgModalContent.src = e.target.src;
+    imgModal.style.display = 'flex';
+  }
+});
+
+// Close modal on click
+imgModal.addEventListener('click', () => {
+  imgModal.style.display = 'none';
+  imgModalContent.src = '';
 });
 
 </script>
