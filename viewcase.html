@@ -275,7 +275,7 @@ window.onload = async () => {
       });
     }
 
-    document.getElementById('caseInfo').innerHTML = data.info || '';
+    document.getElementById('caseInfo').innerHTML = linkify(data.info || '');
 
   } catch (err) {
     console.error('Error loading case:', err);
@@ -320,7 +320,7 @@ document.getElementById('saveChangesBtn').addEventListener('click', async () => 
   const caseInfoDiv = document.getElementById('caseInfo');
   const caseTitle = document.getElementById('caseTitle');
 
-  const updatedInfo = caseInfoDiv.innerHTML;
+ const updatedInfo = linkify(caseInfoDiv.innerHTML);
   const updatedTitle = caseTitle.textContent;
 
   const urlParams = new URLSearchParams(window.location.search);
@@ -339,6 +339,19 @@ document.getElementById('saveChangesBtn').addEventListener('click', async () => 
     alert('Failed to save changes. See console.');
   }
 });
+
+// Convert URLs in text to clickable links
+function linkify(html) {
+  // Regex to match URLs (http, https, or www)
+  const urlPattern = /(\b(https?:\/\/|www\.)[^\s<]+)/gi;
+  return html.replace(urlPattern, function(url) {
+    let hyperlink = url;
+    if (!hyperlink.match(/^https?:\/\//)) {
+      hyperlink = 'http://' + hyperlink; // Add protocol if missing
+    }
+    return `<a href="${hyperlink}" target="_blank" style="color:orange; text-decoration:underline;">${url}</a>`;
+  });
+}
 
 
 </script>
