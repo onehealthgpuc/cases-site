@@ -112,6 +112,16 @@
     display: none;
   }
 </style>
+<style>
+  #imgModal:hover #buttonsOverlay {
+    opacity: 1;
+  }
+  #buttonsOverlay {
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+</style>
+
 </head>
 <body>
 
@@ -146,22 +156,25 @@
   align-items:center;
   justify-content:center;
 ">
-  <div style="position:relative;">
+  <!-- Zoom controls: fixed near top-right of modal -->
+<div id="buttonsOverlay" style="
+  position:fixed;
+  top:20px;      /* distance from top of window */
+  right:20px;    /* distance from right edge */
+  display:flex;
+  gap:6px;
+  z-index:1001;
+  background: rgba(255,255,255,0.8);
+  padding:5px;
+  border-radius:5px;
+  cursor: default;
+">
+  <button onclick="clearDrawing()">Clear</button>
+  <button onclick="zoomIn()">＋</button>
+  <button onclick="zoomOut()">－</button>
+  <button onclick="resetZoom()">Reset</button>
+</div>
 
-    <!-- Zoom controls -->
-    <div style="
-      position:absolute;
-      top:-45px;
-      right:0;
-      display:flex;
-      gap:6px;
-      z-index:10;
-    ">
-	   <button onclick="clearDrawing()">Clear</button>
-      <button onclick="zoomIn()">＋</button>
-      <button onclick="zoomOut()">－</button>
-      <button onclick="resetZoom()">Reset</button>
-    </div>
 
     <!-- Wrapper that gets scaled -->
     <div id="zoomWrapper"
