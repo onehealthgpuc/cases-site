@@ -342,16 +342,55 @@ document.getElementById('saveChangesBtn').addEventListener('click', async () => 
 
 // Convert URLs in text to clickable links
 function linkify(html) {
-  // Regex to match URLs (http, https, or www)
-  const urlPattern = /(\b(https?:\/\/|www\.)[^\s<]+)/gi;
-  return html.replace(urlPattern, function(url) {
-    let hyperlink = url;
-    if (!hyperlink.match(/^https?:\/\//)) {
-      hyperlink = 'http://' + hyperlink; // Add protocol if missing
+  // Create a temporary container
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html;
+
+  function linkifyNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const urlPattern = /(\b(https?:\/\/|www\.)[^\s<]+)/gi;
+      const frag = document.createDocumentFragment();
+      let lastIndex = 0;
+      let match;
+      while ((match = urlPattern.exec(node.textContent)) !== null) {
+        // Add text before the URL
+        if (match.index > lastIndex) {
+          frag.appendChild(document.createTextNode(node.textContent.slice(lastIndex, match.index)));
+        }
+
+        let hyperlink = match[0];
+        if (!hyperlink.match(/^https?:\/\//)) {
+          hyperlink = 'http://' + hyperlink;
+        }
+
+        const a = document.createElement('a');
+        a.href = hyperlink;
+        a.target = '_blank';
+        a.style.color = 'orange';
+        a.style.textDecoration = 'underline';
+        a.textContent = match[0];
+        frag.appendChild(a);
+
+        lastIndex = match.index + match[0].length;
+      }
+
+      // Add remaining text
+      if (lastIndex < node.textContent.length) {
+        frag.appendChild(document.createTextNode(node.textContent.slice(lastIndex)));
+      }
+
+      node.replaceWith(frag);
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      // Recurse for child nodes
+      Array.from(node.childNodes).forEach(linkifyNode);
     }
-    return `<a href="${hyperlink}" target="_blank" style="color:orange; text-decoration:underline;">${url}</a>`;
-  });
+  }
+
+  Array.from(tempDiv.childNodes).forEach(linkifyNode);
+
+  return tempDiv.innerHTML;
 }
+
 
 
 </script>
