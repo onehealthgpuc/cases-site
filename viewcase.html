@@ -163,9 +163,13 @@
   inset:0;
   background: rgba(0,0,0,0.85);
   z-index:1000;
-  align-items:center;
+
+  overflow:auto;          /* ⭐ allows scrolling */
+  align-items:flex-start; /* ⭐ start from top instead of center */
   justify-content:center;
+  padding:40px 20px;      /* ⭐ space around edges */
 ">
+
   <!-- Zoom controls: fixed near top-right of modal -->
 <div id="buttonsOverlay" style="
   position:fixed;
@@ -187,8 +191,8 @@
 
 
     <!-- Wrapper that gets scaled -->
-    <div id="zoomWrapper"
-         style="position:relative; max-width:90vw; max-height:90vh; transform-origin:center center;">
+   <div id="zoomWrapper"
+     style="position:relative; transform-origin:top center;">
 
       <img id="imgModalContent"
            src=""
@@ -406,6 +410,9 @@ function linkify(html) {
 </script>
 <script>
 const imgModal = document.getElementById('imgModal');
+let imageList = [];
+let currentImageIndex = 0;
+
 const imgModalContent = document.getElementById('imgModalContent');
 const drawCanvas = document.getElementById('drawCanvas');
 
@@ -420,6 +427,13 @@ function resizeCanvas() {
 // Open modal
 document.addEventListener('click', (e) => {
   if (e.target.tagName === 'IMG' && !e.target.closest('#imgModal')) {
+
+    // Build list of visible images in files container
+    imageList = Array.from(document.querySelectorAll('#filesContainer img'));
+
+    // Find index of clicked image
+    currentImageIndex = imageList.indexOf(e.target);
+
     imgModalContent.src = e.target.src;
     imgModal.style.display = 'flex';
 
@@ -435,6 +449,41 @@ document.addEventListener('click', (e) => {
     }, 50);
   }
 });
+
+document.addEventListener('keydown', (e) => {
+  if (imgModal.style.display !== 'flex') return;
+
+  if (e.key === 'ArrowRight') {
+    showNextImage();
+  } else if (e.key === 'ArrowLeft') {
+    showPrevImage();
+  }
+});
+
+function showNextImage() {
+  if (!imageList.length) return;
+
+  currentImageIndex = (currentImageIndex + 1) % imageList.length;
+  changeImage();
+}
+
+function showPrevImage() {
+  if (!imageList.length) return;
+
+  currentImageIndex =
+    (currentImageIndex - 1 + imageList.length) % imageList.length;
+  changeImage();
+}
+
+function changeImage() {
+  imgModalContent.src = imageList[currentImageIndex].src;
+
+  zoomLevel = 1;
+  applyZoom();
+  clearDrawing();
+
+  setTimeout(resizeCanvas, 50);
+}
 
 
 // Drawing events
