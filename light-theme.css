@@ -1,0 +1,36 @@
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  color: #000;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+input[type="number"],
+textarea,
+select,
+[contenteditable="true"],
+#noteInput,
+#caseInfo {
+  background-color: #fff !important;
+  color: #000 !important;
+  caret-color: #000;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #666;
+  opacity: 1;
+}
+
+option {
+  background: #fff;
+  color: #000;
+}
