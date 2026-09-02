@@ -115,6 +115,15 @@
     cursor: pointer;
     display: none;
   }
+  #controls .secondary-btn, #exitPresentation {
+    padding: 5px 12px;
+    background: #fff !important;
+    color: #000 !important;
+    border: 1px solid orange;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+  }
   #caseMeta { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; margin-bottom:16px; }
   .meta-chip { background:#e9e9e9; color:#111; padding:4px 9px; border-radius:14px; font-size:12px; }
   #auditInfo { margin-top:24px; color:#666; font-size:12px; text-align:center; }
@@ -143,9 +152,9 @@
   <div id="controls">
     <span id="userStatus"></span>
     <button id="homeBtn" onclick="window.location.href='index.html'">Home</button>
-    <button onclick="togglePresentation()">Present</button>
+    <button class="secondary-btn" onclick="togglePresentation()">Present</button>
     <select id="statusControl" aria-label="Case visibility"><option value="draft">Draft</option><option value="published">Published</option></select>
-    <button onclick="signOut()">Sign out</button>
+    <button class="secondary-btn" onclick="signOut()">Sign out</button>
   </div>
 </header>
 
