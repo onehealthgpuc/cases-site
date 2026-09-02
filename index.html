@@ -116,10 +116,6 @@
   }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/emailjs-com@2/dist/email.min.js"></script>
-<script>
-  (function(){ emailjs.init("SlgDGx0oPoAoDrWia"); })();
-</script>
 <link rel="stylesheet" href="design-system.css?v=5">
 <link rel="stylesheet" href="ui-feedback.css">
 <script src="ui-dialogs.js"></script>
@@ -137,7 +133,8 @@
     <input type="text" id="searchInput" placeholder="Search...">
     <select id="tagFilter" aria-label="Filter by tag"><option value="">All tags</option></select>
     <button id="newCaseBtn" onclick="window.location.href='newcase.html'">+ New Case</button>
-    <button id="pingBtn" title="Send Ping">📩</button>
+    <button id="pingBtn" title="Prepare new-case email in Gmail" aria-label="Prepare new-case email in Gmail" disabled>📩</button>
+    <a id="gmailDraftLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Gmail draft</a>
     <button id="settingsIcon" class="control-item">⚙️</button>
     <button id="usersBtn">Users</button>
     <button id="passwordBtn">Change password</button>
@@ -153,18 +150,14 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-auth.js"></script>
 <script src="publication-date.js"></script>
+<script src="gmail-draft.js"></script>
 
-<!-- EmailJS -->
-<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 
 <script>
 window.onload = async () => {
   const access = await requireAccess();
   const isAdmin = access.role === 'admin';
   const db = firebase.firestore();
-
-  // --- Initialize EmailJS ---
-  emailjs.init("SlgDGx0oPoAoDrWia");
 
   const container = document.getElementById('casesContainer');
   const searchInput = document.getElementById('searchInput');
@@ -206,6 +199,7 @@ window.onload = async () => {
       }
       populateTagFilter();
       renderCards(allCases);
+      pingBtn.disabled = false;
     } catch(err) {
       console.error(err);
       container.innerHTML = '<p>Error loading cases. Check console.</p>';
@@ -344,37 +338,46 @@ window.onload = async () => {
     }
   });
 
-  // --- Ping button ---
+  // Prepare an email in Gmail; the administrator sends it there.
   pingBtn.addEventListener('click', async () => {
+    if (pingBtn.disabled) return;
+    const latestCase = allCases.find(item => item.status === 'published');
+    if (!latestCase) return await appAlert('Publish a case before preparing an announcement.');
+    pingBtn.disabled = true;
+    const draftLink = document.getElementById('gmailDraftLink');
+    draftLink.hidden = true;
+    // Reserve the tab during the click so fetching recipients does not block it.
+    const gmailTab = window.open('about:blank', '_blank');
+    if (gmailTab) {
+      gmailTab.opener = null;
+      gmailTab.document.title = 'Preparing Gmail draft…';
+      gmailTab.document.body.textContent = 'Preparing your new-case email…';
+    }
     try {
       const snapshot = await db.collection('EmailRecipients').get();
-      const emails = snapshot.docs.map(doc => doc.data().email);
-      if(emails.length === 0) return await appAlert("No recipients saved!");
-
-      // Latest case info
-      const latestCase = allCases[0];
-      const caseTitle = latestCase?.title || "Untitled Case";
-      const caseLink = "https://onehealthgpuc.github.io/cases-site/";
-
-
-      for(const email of emails) {
-        try {
-          await emailjs.send("service_zsj96dz", "template_p9p8gyc", {
-            recipient_email: email,
-            message: "A new medical case has been uploaded.",
-            case_title: caseTitle,
-            case_link: caseLink
-          });
-          console.log(`Email sent to ${email}`);
-        } catch(err) {
-          console.error(`Failed to send email to ${email}:`, err);
-        }
+      const emails = [...new Set(snapshot.docs.map(doc => doc.data().email)
+        .filter(email => typeof email === 'string').map(email => email.trim()).filter(Boolean))];
+      if (!emails.length) {
+        gmailTab?.close();
+        return await appAlert('Add email recipients using the settings button first.');
       }
-
-      await appAlert("Ping email sent to all recipients!");
-    } catch(err) {
-      console.error("Failed to send ping:", err);
-      await appAlert("Failed to send ping. Check console for details.");
+      if (emails.some(email => !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email))) {
+        gmailTab?.close();
+        return await appAlert('An email recipient has an invalid address. Please correct the list in Settings.');
+      }
+      const gmailUrl = buildGmailDraftUrl(latestCase, emails);
+      draftLink.href = gmailUrl;
+      if (gmailTab && !gmailTab.closed) gmailTab.location.replace(gmailUrl);
+      else {
+        draftLink.hidden = false;
+        await appAlert('Your email is prepared. Click “Open Gmail draft” beside the envelope, then review it and click Send in Gmail.');
+      }
+    } catch (error) {
+      gmailTab?.close();
+      console.error('Unable to prepare Gmail draft:', error);
+      await appAlert('Unable to load email recipients. Please try again. No email has been sent.');
+    } finally {
+      pingBtn.disabled = false;
     }
   });
 
