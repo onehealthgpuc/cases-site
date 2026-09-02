@@ -21,7 +21,7 @@ body > #logo { display:block; width:min(250px,55vw)!important; height:auto; marg
 .controls button:hover,#settingsIcon:hover { background:#fff5ef!important; border-color:#f0a47e!important; }
 #userStatus { padding:0 5px; color:var(--oh-muted); font-size:12px; white-space:nowrap; }
 .cards { max-width:1180px; margin:0 auto 45px!important; display:grid!important; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px!important; align-items:stretch; }
-.card { width:auto!important; min-height:230px; padding:0!important; overflow:visible; display:flex; flex-direction:column; text-align:left; background:var(--oh-white)!important; border:1px solid var(--oh-line); border-radius:14px!important; box-shadow:0 5px 18px #17201d0b!important; }
+.card { width:auto!important; min-height:230px; padding:0 0 48px!important; overflow:visible; display:flex; flex-direction:column; text-align:left; background:var(--oh-white)!important; border:1px solid var(--oh-line); border-radius:14px!important; box-shadow:0 5px 18px #17201d0b!important; }
 .card:hover { transform:translateY(-3px)!important; border-color:#cbd9d1; box-shadow:0 12px 28px #17201d17!important; }
 .card > img { width:100%!important; height:105px!important; margin:0 0 14px!important; border-radius:14px 14px 0 0!important; object-fit:cover!important; background:linear-gradient(135deg,#e7efea,#f7ece5); }
 .card h2 { margin:0 16px 10px!important; font-size:16px!important; line-height:1.35; font-weight:650; color:var(--oh-ink); }
@@ -30,9 +30,9 @@ body > #logo { display:block; width:min(250px,55vw)!important; height:auto; marg
 .meta-chip { background:var(--oh-green-soft)!important; color:#3f5c4c!important; padding:4px 8px!important; }
 .status-chip { margin:0 16px 8px; color:#985017!important; }
 .card .badge { top:10px!important; right:10px!important; border-radius:20px!important; padding:4px 8px!important; box-shadow:0 2px 7px #0002; }
-.card-menu { left:auto!important; right:10px; top:116px!important; }
+.card-menu { left:auto!important; right:10px; top:auto!important; bottom:10px; }
 .menu-toggle { background:var(--oh-white)!important; color:var(--oh-ink)!important; border:1px solid var(--oh-line)!important; }
-.menu-panel { left:auto!important; right:0; border-color:var(--oh-line)!important; box-shadow:0 10px 28px #17201d20!important; z-index:10; }
+.menu-panel { left:auto!important; right:0; top:auto!important; bottom:34px; border-color:var(--oh-line)!important; box-shadow:0 10px 28px #17201d20!important; z-index:10; }
 .menu-panel button { color:var(--oh-ink)!important; }
 .menu-panel .danger { color:var(--oh-danger)!important; }
 
