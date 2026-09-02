@@ -140,8 +140,10 @@
   </div>
 
   <div class="form-group">
-    <label for="fileInput">Upload Files (Images / PDF)</label>
-    <input type="file" id="fileInput" multiple accept="image/*,application/pdf" />
+    <label for="fileInput">Upload photos / PDFs</label>
+    <input type="file" id="fileInput" multiple accept="image/*,application/pdf" aria-describedby="uploadHelp uploadStatus" />
+    <p id="uploadHelp">Select multiple photos at once, or choose more files to add to your selection. Confirm de-identification below before uploading.</p>
+    <p id="uploadStatus" role="status" aria-live="polite"></p>
   </div>
 
   <label class="privacy-check">
@@ -152,9 +154,6 @@
   <div id="previewContainer"></div>
 
   <button id="saveBtn">Save Case</button>
-<p style="font-size:12px; color:#777; margin-top:5px; text-align:left;">
-  Ensure file has fully loaded before clicking Save.
-</p>
 
 </main>
 
@@ -163,6 +162,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-auth.js"></script>
+<script src="case-formatting.js"></script>
 
 <script>
 const cloudName = 'dsc0hziur';
@@ -174,6 +174,9 @@ const previewContainer = document.getElementById('previewContainer');
 const saveBtn = document.getElementById('saveBtn');
 const noteInput = document.getElementById('noteInput');
 let uploadedFiles = [];
+let isUploading = false;
+let isSaving = false;
+const uploadStatus = document.getElementById('uploadStatus');
 
 const db = firebase.firestore();
 const adminAccess = requireAccess('admin');
@@ -198,40 +201,73 @@ async function uploadToCloudinary(file){
 }
 
 fileInput.addEventListener('change', async (e)=>{
-  await adminAccess;
+  if (isUploading || isSaving) return;
+  const files=Array.from(e.target.files||[]);
+  fileInput.value = '';
+  if (!files.length) return;
   if (!document.getElementById('deidentified').checked) {
-    fileInput.value = '';
     return alert('Confirm that the case is de-identified before uploading files.');
   }
-  previewContainer.innerHTML='';
-  uploadedFiles=[];
-  const files=Array.from(e.target.files||[]);
-  for(const file of files){
-    try{
-      const uploaded=await uploadToCloudinary(file);
-      uploadedFiles.push(uploaded);
-      const img=document.createElement('img'); img.src=uploaded.previewUrl||uploaded.url; img.alt=uploaded.name;
-      const wrapper=document.createElement('div'); wrapper.className='preview-wrapper'; wrapper.appendChild(img);
-      const a=document.createElement('a'); a.href=uploaded.url; a.target='_blank'; a.rel='noopener noreferrer'; a.appendChild(wrapper);
-      previewContainer.appendChild(a);
-    }catch(err){console.error('Upload failed:',err); alert(`Upload failed for ${file.name}`);}
+  isUploading = true;
+  fileInput.disabled = true;
+  saveBtn.disabled = true;
+  const failed = [];
+  try {
+    await adminAccess;
+    for(const [index, file] of files.entries()){
+      uploadStatus.textContent = `Uploading ${index + 1} of ${files.length}: ${file.name}`;
+      try{
+        const uploaded=await uploadToCloudinary(file);
+        uploadedFiles.push(uploaded);
+        const img=document.createElement('img'); img.src=uploaded.previewUrl||uploaded.url; img.alt=uploaded.name;
+        const wrapper=document.createElement('div'); wrapper.className='preview-wrapper';
+        const a=document.createElement('a'); a.href=uploaded.url; a.target='_blank'; a.rel='noopener noreferrer'; a.appendChild(img);
+        const name=document.createElement('div'); name.textContent=uploaded.name;
+        name.style.overflowWrap='anywhere';
+        const remove=document.createElement('button'); remove.type='button'; remove.textContent='Remove';
+        remove.setAttribute('aria-label', `Remove ${uploaded.name}`);
+        remove.onclick=()=>{
+          if (isUploading || isSaving) return;
+          uploadedFiles=uploadedFiles.filter(item=>item!==uploaded);
+          wrapper.remove();
+          uploadStatus.textContent=`${uploadedFiles.length} file(s) ready to save.`;
+        };
+        wrapper.append(a,name,remove);
+        previewContainer.appendChild(wrapper);
+      }catch(err){console.error('Upload failed:',err); failed.push(file.name);}
+    }
+    uploadStatus.textContent = `${uploadedFiles.length} file(s) ready to save.` +
+      (failed.length ? ` Upload failed for: ${failed.join(', ')}. Choose these files again to retry.` : '');
+  } catch(err) {
+    console.error('Unable to upload:',err);
+    uploadStatus.textContent = 'Unable to upload. Please reload and try again.';
+  } finally {
+    isUploading = false;
+    fileInput.disabled = false;
+    saveBtn.disabled = false;
   }
 });
 
 saveBtn.addEventListener('click', async ()=>{
+  if (isUploading || isSaving) return;
   const access = await adminAccess;
+  if (isUploading || isSaving) return;
   const title=document.getElementById('title').value.trim();
-  const info=noteInput.innerHTML.trim();
+  let info=noteInput.innerHTML.trim();
   if(!title) return alert('Title is required');
   if(!document.getElementById('deidentified').checked) return alert('You must confirm the case is de-identified.');
   const tags=document.getElementById('tags').value.split(',').map(tag=>tag.trim().toLowerCase()).filter(Boolean);
   const difficulty=document.getElementById('difficulty').value;
   const durationMinutes=Number(document.getElementById('duration').value)||null;
   const status=document.getElementById('status').value;
+  if (status === 'published') info = formatClinicalHeadings(info);
   const publishedDateValue=document.getElementById('publishedDate').value;
   if(!publishedDateValue) return alert('Publication date is required.');
   const publishedAt=firebase.firestore.Timestamp.fromDate(new Date(`${publishedDateValue}T12:00:00`));
   const filesForFirestore=(uploadedFiles||[]).map(f=>({name:f.name,url:f.url,previewUrl:f.previewUrl||f.url,type:f.type}));
+  isSaving = true;
+  saveBtn.disabled = true;
+  fileInput.disabled = true;
   try{
     const docRef=await db.collection('MedicalCases').add({
       title, info, files:filesForFirestore,
@@ -245,7 +281,12 @@ saveBtn.addEventListener('click', async ()=>{
     });
     alert(status === 'published' ? 'Case published!' : 'Draft saved!');
     window.location.href=`viewcase.html?caseId=${docRef.id}`;
-  }catch(err){console.error('Error saving case:',err); alert('Failed to save case.');}
+  }catch(err){
+    console.error('Error saving case:',err); alert('Failed to save case.');
+    isSaving = false;
+    saveBtn.disabled = false;
+    fileInput.disabled = false;
+  }
 });
 </script>
 </body>

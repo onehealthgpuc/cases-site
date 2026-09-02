@@ -10,7 +10,10 @@
     main { max-width:800px; margin:auto; background:#fff; border-radius:10px; padding:24px; box-shadow:0 3px 12px #0002; }
     h1 { margin-top:0; }
     .notice { background:#fff4e8; border-left:4px solid #f06a22; padding:12px; }
-    .add-grid { display:grid; grid-template-columns:1.5fr auto auto; gap:8px; margin:20px 0; }
+    .add-grid { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) auto auto; gap:8px; margin:20px 0; }
+    .add-grid input { min-width:0; }
+    .table-scroll { overflow-x:auto; }
+    .nickname-input { width:100%; min-width:110px; box-sizing:border-box; }
     input,select,button { padding:9px; border:1px solid #bbb; border-radius:5px; }
     button { background:#f06a22; color:#fff; border:0; cursor:pointer; }
     table { width:100%; border-collapse:collapse; }
@@ -25,13 +28,17 @@
   <p class="notice">Invite a person by email. They will receive a secure Firebase email and choose their own password. The temporary system-generated password is never displayed or shared.</p>
   <div class="add-grid">
     <input id="email" type="email" placeholder="User email" aria-label="User email">
+    <input id="nickname" type="text" maxlength="40" placeholder="Nickname (e.g. Xlyn)" aria-label="Nickname" aria-describedby="nicknameHelp">
     <select id="role" aria-label="Role"><option value="viewer">Viewer</option><option value="admin">Admin</option></select>
     <button id="saveUser">Invite user</button>
   </div>
+  <p id="nicknameHelp">Nicknames appear in the home greeting, e.g. “Welcome Xlyn!” Add or change a nickname below and select Update.</p>
+  <div class="table-scroll">
   <table>
-    <thead><tr><th>Email</th><th>UID</th><th>Role</th><th></th></tr></thead>
+    <thead><tr><th>Email</th><th>UID</th><th>Nickname</th><th>Role</th><th></th></tr></thead>
     <tbody id="userRows"></tbody>
   </table>
+  </div>
 </main>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -56,10 +63,27 @@
     snapshot.docs.forEach(doc=>{
       const data=doc.data();
       const tr=document.createElement('tr');
+      const nicknameInput=document.createElement('input');
+      nicknameInput.type='text'; nicknameInput.maxLength=40; nicknameInput.className='nickname-input';
+      nicknameInput.value=typeof data.nickname==='string' ? data.nickname : '';
+      nicknameInput.placeholder='Nickname';
+      nicknameInput.setAttribute('aria-label',`Nickname for ${data.email || doc.id}`);
       const roleSelect=document.createElement('select');
       ['viewer','admin'].forEach(role=>{const option=document.createElement('option');option.value=role;option.textContent=role;option.selected=data.role===role;roleSelect.appendChild(option);});
-      const save=document.createElement('button');save.textContent='Update';save.onclick=async()=>{await doc.ref.set({role:roleSelect.value,email:data.email||''},{merge:true});alert('Role updated.');};
+      const save=document.createElement('button');save.textContent='Update';
+      save.onclick=async()=>{
+        save.disabled=true;
+        try {
+          const nickname=nicknameInput.value.trim();
+          await doc.ref.set({role:roleSelect.value,email:data.email||'',nickname},{merge:true});
+          nicknameInput.value=nickname;
+          alert('User updated. The nickname will appear when they next open or refresh Home.');
+        } catch(error) {
+          console.error(error); alert('Unable to update this user.');
+        } finally { save.disabled=false; }
+      };
       [data.email||'Not recorded',doc.id].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
+      const nicknameCell=document.createElement('td');nicknameCell.appendChild(nicknameInput);tr.appendChild(nicknameCell);
       const roleCell=document.createElement('td');roleCell.appendChild(roleSelect);tr.appendChild(roleCell);
       const actionCell=document.createElement('td');actionCell.appendChild(save);tr.appendChild(actionCell);rows.appendChild(tr);
     });
@@ -69,15 +93,17 @@
     const access=await adminAccess;
     const email=document.getElementById('email').value.trim().toLowerCase();
     const role=document.getElementById('role').value;
+    const nickname=document.getElementById('nickname').value.trim();
     if(!email) return alert('Email is required.');
     const button=document.getElementById('saveUser'); button.disabled=true; button.textContent='Sending…';
     try {
       const credential=await provisioningAuth.createUserWithEmailAndPassword(email,randomTemporaryPassword());
       const uid=credential.user.uid;
       await provisioningAuth.signOut();
-      await db.collection('users').doc(uid).set({email,role,invitedBy:access.user.email,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      await db.collection('users').doc(uid).set({email,role,nickname,invitedBy:access.user.email,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
       await firebase.auth().sendPasswordResetEmail(email);
       document.getElementById('email').value='';
+      document.getElementById('nickname').value='';
       await renderUsers();
       alert(`Invitation sent to ${email}. They must use the email link to choose their password.`);
     } catch(error) {

@@ -124,7 +124,6 @@
   <div class="controls">
     <input type="text" id="searchInput" placeholder="Search...">
     <select id="tagFilter" aria-label="Filter by tag"><option value="">All tags</option></select>
-    <button id="rosterBtn">Roster</button>
     <button id="newCaseBtn" onclick="window.location.href='newcase.html'">+ New Case</button>
     <button id="pingBtn" title="Send Ping">📩</button>
     <button id="settingsIcon" class="control-item">⚙️</button>
@@ -164,7 +163,7 @@ window.onload = async () => {
   const passwordBtn = document.getElementById('passwordBtn');
 
   let allCases = [];
-  document.getElementById('userStatus').textContent = `${access.user.email} (${access.role})`;
+  document.getElementById('userStatus').textContent = access.nickname ? `Welcome ${access.nickname}!` : 'Welcome!';
   document.getElementById('newCaseBtn').style.display = isAdmin ? '' : 'none';
   settingsIcon.style.display = isAdmin ? '' : 'none';
   pingBtn.style.display = isAdmin ? '' : 'none';
@@ -174,11 +173,16 @@ window.onload = async () => {
   async function loadCases() {
     try {
       const query = isAdmin
-        ? db.collection('MedicalCases').orderBy('timestamp','desc')
+        ? db.collection('MedicalCases')
         : db.collection('MedicalCases').where('status','==','published');
       const snapshot = await query.get();
       allCases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (!isAdmin) allCases.sort((a,b)=>(b.timestamp?.toMillis?.()||0)-(a.timestamp?.toMillis?.()||0));
+      allCases.sort((a,b) =>
+        ((b.publishedAt || b.timestamp)?.toMillis?.() || 0) -
+        ((a.publishedAt || a.timestamp)?.toMillis?.() || 0) ||
+        (b.timestamp?.toMillis?.() || 0) - (a.timestamp?.toMillis?.() || 0) ||
+        a.id.localeCompare(b.id)
+      );
       if (isAdmin) {
         const legacy = snapshot.docs.filter(doc => !doc.data().status);
         if (legacy.length) {
@@ -301,7 +305,7 @@ window.onload = async () => {
       const titleMatch = c.title?.toLowerCase().includes(query);
       const tagText = (c.tags || []).join(' ').toLowerCase();
       const tagSearchMatch = tagText.includes(query);
-      const dateMatch = c.timestamp?.toDate().toLocaleString().toLowerCase().includes(query);
+      const dateMatch = (c.publishedAt || c.timestamp)?.toDate().toLocaleString().toLowerCase().includes(query);
       const selectedTagMatch = !selectedTag || (c.tags || []).includes(selectedTag);
       return (titleMatch || tagSearchMatch || dateMatch) && selectedTagMatch;
     });
@@ -365,9 +369,6 @@ window.onload = async () => {
   // --- Initial load ---
   loadCases();
 };
-document.getElementById('rosterBtn').addEventListener('click', () => {
-  window.location.href = 'https://onehealthgpuc.github.io/OHRoster/';
-});
 
 </script>
 

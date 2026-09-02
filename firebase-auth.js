@@ -23,9 +23,11 @@ async function getAccess() {
   if (!user) return null;
 
   const profile = await firebase.firestore().collection('users').doc(user.uid).get();
-  const role = profile.exists ? profile.data().role : null;
+  const data = profile.exists ? profile.data() : {};
+  const role = data.role;
   if (role !== 'viewer' && role !== 'admin') return null;
-  return { user, role };
+  const nickname = typeof data.nickname === 'string' ? data.nickname.trim() : '';
+  return { user, role, nickname };
 }
 
 async function requireAccess(requiredRole) {
