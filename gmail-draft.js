@@ -17,6 +17,7 @@ function buildGmailDraftUrl(caseData, recipients) {
     'OneHealth'
   ].join('\n');
   const gmail = new URL('https://mail.google.com/mail/');
+  gmail.searchParams.set('authuser', 'onehealthgpuc@gmail.com');
   gmail.searchParams.set('view', 'cm');
   gmail.searchParams.set('fs', '1');
   gmail.searchParams.set('bcc', recipients.join(','));
