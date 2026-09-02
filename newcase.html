@@ -89,7 +89,7 @@
   .privacy-check { display:flex; gap:10px; align-items:flex-start; padding:14px; background:#fff4e8; border:1px solid #f06a22; border-radius:6px; }
   .privacy-check input { margin-top:3px; }
 </style>
-<link rel="stylesheet" href="design-system.css?v=2">
+<link rel="stylesheet" href="design-system.css?v=3">
 </head>
 <body>
 
@@ -194,7 +194,7 @@ async function uploadToCloudinary(file){
   if(!res.ok||!data.secure_url) throw new Error(data.error?.message||res.statusText);
   let previewUrl = data.secure_url;
   if(isPdf) previewUrl=`https://res.cloudinary.com/${cloudName}/image/upload/f_jpg,pg_1,q_auto,w_800/${data.public_id}.pdf`;
-  return {name:file.name,url:previewUrl,type:isPdf?'pdf':'image'};
+  return {name:file.name,url:data.secure_url,previewUrl,type:isPdf?'pdf':'image'};
 }
 
 fileInput.addEventListener('change', async (e)=>{
@@ -210,7 +210,7 @@ fileInput.addEventListener('change', async (e)=>{
     try{
       const uploaded=await uploadToCloudinary(file);
       uploadedFiles.push(uploaded);
-      const img=document.createElement('img'); img.src=uploaded.url; img.alt=uploaded.name;
+      const img=document.createElement('img'); img.src=uploaded.previewUrl||uploaded.url; img.alt=uploaded.name;
       const wrapper=document.createElement('div'); wrapper.className='preview-wrapper'; wrapper.appendChild(img);
       const a=document.createElement('a'); a.href=uploaded.url; a.target='_blank'; a.rel='noopener noreferrer'; a.appendChild(wrapper);
       previewContainer.appendChild(a);
@@ -231,7 +231,7 @@ saveBtn.addEventListener('click', async ()=>{
   const publishedDateValue=document.getElementById('publishedDate').value;
   if(!publishedDateValue) return alert('Publication date is required.');
   const publishedAt=firebase.firestore.Timestamp.fromDate(new Date(`${publishedDateValue}T12:00:00`));
-  const filesForFirestore=(uploadedFiles||[]).map(f=>({name:f.name,url:f.url,type:f.type}));
+  const filesForFirestore=(uploadedFiles||[]).map(f=>({name:f.name,url:f.url,previewUrl:f.previewUrl||f.url,type:f.type}));
   try{
     const docRef=await db.collection('MedicalCases').add({
       title, info, files:filesForFirestore,

@@ -144,7 +144,7 @@
   }
 </style>
 
-<link rel="stylesheet" href="design-system.css?v=2">
+<link rel="stylesheet" href="design-system.css?v=3">
 </head>
 <body>
 
@@ -277,39 +277,52 @@ window.onload = async () => {
           filesContainer.appendChild(img);
         } else if (file.type === 'pdf') {
           const wrapper = document.createElement('div');
+          wrapper.className = 'file-wrapper pdf-file';
           wrapper.style.display = 'flex';
           wrapper.style.flexDirection = 'column';
           wrapper.style.alignItems = 'center';
           wrapper.style.gap = '5px';
 
-          // Try to show PDF preview
-          let previewUrl;
-          try {
-            const pdfPublicId = file.url.split('/').pop().split('.')[0];
-            previewUrl = `https://res.cloudinary.com/dsc0hziur/image/upload/f_jpg,pg_1,q_auto,w_250/${pdfPublicId}.pdf`;
-          } catch {
-            previewUrl = '';
+          // Show a first-page image that can use the standard zoom viewer.
+          let previewUrl = file.previewUrl || '';
+          if (!previewUrl) {
+            try {
+              const isCloudinaryImage = /\/image\/upload\/.*f_jpg/i.test(file.url);
+              if (isCloudinaryImage) previewUrl = file.url;
+              else {
+                const pdfPublicId = file.url.split('/').pop().replace(/\.pdf(?:\?.*)?$/i,'');
+                previewUrl = `https://res.cloudinary.com/dsc0hziur/image/upload/f_jpg,pg_1,q_auto,w_800/${pdfPublicId}.pdf`;
+              }
+            } catch { previewUrl = ''; }
           }
 
+          let previewImage;
           if (previewUrl) {
             const img = document.createElement('img');
             img.src = previewUrl;
+            img.alt = `First page preview of ${file.name || 'PDF'}`;
+            img.title = 'Click to zoom PDF preview';
             img.style.maxHeight = '250px';
             img.style.borderRadius = '8px';
             img.style.border = '1px solid #ccc';
+            img.style.cursor = 'zoom-in';
             wrapper.appendChild(img);
+            previewImage = img;
           }
 
-          const btn = document.createElement('button');
-          btn.textContent = 'View PDF';
-          btn.style.padding = '4px 8px';
-          btn.style.background = 'orange';
-          btn.style.color = 'white';
-          btn.style.border = 'none';
-          btn.style.borderRadius = '4px';
-          btn.style.cursor = 'pointer';
-          btn.onclick = () => window.open(file.url, '_blank');
-          wrapper.appendChild(btn);
+          if (previewImage) {
+            const zoomBtn = document.createElement('button');
+            zoomBtn.textContent = 'Zoom preview';
+            zoomBtn.className = 'secondary-btn';
+            zoomBtn.onclick = () => previewImage.click();
+            wrapper.appendChild(zoomBtn);
+          }
+
+          const openBtn = document.createElement('button');
+          openBtn.textContent = 'Open PDF';
+          openBtn.className = 'secondary-btn';
+          openBtn.onclick = () => window.open(file.url, '_blank', 'noopener');
+          wrapper.appendChild(openBtn);
 
           filesContainer.appendChild(wrapper);
         }

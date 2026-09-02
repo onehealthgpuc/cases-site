@@ -65,6 +65,8 @@ body > h1#caseTitle { max-width:980px; margin:30px auto 12px; padding:0 24px; fo
 #buttonsOverlay { opacity:1!important; background:#fff!important; border:1px solid var(--oh-line); box-shadow:0 8px 24px #0004; padding:7px!important; border-radius:10px!important; }
 #buttonsOverlay button { min-height:38px; padding:7px 11px; background:#fff!important; color:#000!important; border:1px solid #cfd8d2; border-radius:7px; font-weight:650; cursor:pointer; }
 #buttonsOverlay button:hover { background:#fff3eb!important; border-color:#ee9b72; }
+.file-wrapper .secondary-btn { min-height:36px; padding:7px 11px; background:#fff!important; color:#000!important; border:1px solid #cfd8d2; border-radius:7px; font-weight:650; cursor:pointer; }
+.file-wrapper .secondary-btn:hover { background:#fff3eb!important; border-color:#ee9b72; }
 
 ul#emailList { background:var(--oh-white); border:1px solid var(--oh-line); border-radius:10px; overflow:hidden; }
 ul#emailList li { padding:12px 14px!important; border-color:var(--oh-line)!important; }
