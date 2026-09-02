@@ -48,12 +48,12 @@
     line-height: 1.5;
     min-height: 80px;
     margin-top: 15px;
-    border: 1px solid #f5f5f5;   
+    border: 1px solid #f5f5f5;
     padding: 12px;
     border-radius: 5px;
-    background: #f5f5f5;           
+    background: #f5f5f5;
   }
-  
+
    #caseInfo img {
   display: block;
   max-width: 100%;
@@ -155,7 +155,7 @@
     <span id="userStatus"></span>
     <button id="homeBtn" onclick="window.location.href='index.html'">Home</button>
     <button class="secondary-btn" onclick="togglePresentation()">Present</button>
-    <select id="statusControl" aria-label="Case visibility"><option value="draft">Draft</option><option value="published">Published</option></select>
+    <button id="editCaseBtn" class="secondary-btn" hidden>Edit case</button>
     <button class="secondary-btn" onclick="signOut()">Sign out</button>
   </div>
 </header>
@@ -168,15 +168,8 @@
 <div id="filesContainer" role="region" aria-label="Case photos and PDFs" tabindex="0"></div>
 
 <section class="case-notes" aria-label="Clinical notes">
-<div id="formattingBtns" style="display:none;">
-  <button onclick="applyFormat('bold')">Bold</button>
-  <button onclick="applyFormat('italic')">Italic</button>
-  <button onclick="applyFormat('underline')">Underline</button>
-  <button onclick="applyFormat('highlight')">Highlight</button>
-</div>
-
 <div id="caseInfo" contenteditable="false"></div>
-<div class="case-save-actions"><button id="saveChangesBtn">Save Changes</button></div>
+
 </section>
 </div>
 <div id="auditInfo"></div>
@@ -218,11 +211,18 @@ window.onload = async () => {
   document.getElementById('userStatus').textContent = `${access.user.email} (${access.role})`;
   const db = firebase.firestore();
 
-  if (access.role === 'admin') enableEditing();
+
 
   const urlParams = new URLSearchParams(window.location.search);
   const caseId = urlParams.get('caseId');
   if (!caseId) { alert('No case selected'); return; }
+  if (access.role === 'admin') {
+    const editUrl = `newcase.html?caseId=${encodeURIComponent(caseId)}`;
+    if (urlParams.get('edit') === '1') { window.location.replace(editUrl); return; }
+    const editButton = document.getElementById('editCaseBtn');
+    editButton.hidden = false;
+    editButton.onclick = () => { window.location.href = editUrl; };
+  }
 
   try {
     const doc = await db.collection('MedicalCases').doc(caseId).get();
@@ -230,7 +230,7 @@ window.onload = async () => {
 
     const data = doc.data();
     document.getElementById('caseTitle').textContent = data.title;
-    document.getElementById('statusControl').value = data.status || 'published';
+
     const meta = document.getElementById('caseMeta');
     const publicationLabel = data.publishedAt?.toDate ? `Published ${data.publishedAt.toDate().toLocaleDateString()}` : '';
     [...(data.tags || []), data.difficulty, data.durationMinutes ? `${data.durationMinutes} min` : '', publicationLabel].filter(Boolean).forEach(value => {
@@ -318,65 +318,6 @@ window.onload = async () => {
   }
 };
 
-function enableEditing() {
-  const caseInfoDiv = document.getElementById('caseInfo');
-  const saveBtn = document.getElementById('saveChangesBtn');
-  const caseTitle = document.getElementById('caseTitle');
-
-  caseInfoDiv.contentEditable = String(!document.body.classList.contains('presentation'));
-  caseInfoDiv.style.border = '1px solid #ccc';
-  document.getElementById('formattingBtns').style.display = 'flex';
-  saveBtn.style.display = 'inline-block';
-  document.getElementById('statusControl').style.display = 'inline-block';
-  caseTitle.contentEditable = String(!document.body.classList.contains('presentation'));
-  caseTitle.style.borderBottom = '1px dashed #ccc';
-}
-
-// Formatting functions
-function applyFormat(cmd) {
-  const caseInfoDiv = document.getElementById('caseInfo');
-  caseInfoDiv.focus(); // <- ensure execCommand works
-  if (cmd === 'highlight') {
-    document.execCommand('backColor', false, 'yellow');
-  } else {
-    document.execCommand(cmd, false, null);
-  }
-}
-
-// Save edited content (info + title)
-document.getElementById('saveChangesBtn').addEventListener('click', async () => {
-  if (document.body.classList.contains('presentation')) return;
-  const access = window.currentAccess || await requireAccess('admin');
-  if (access.role !== 'admin' || document.body.classList.contains('presentation')) return;
-  const caseInfoDiv = document.getElementById('caseInfo');
-  const caseTitle = document.getElementById('caseTitle');
-
-  const status = document.getElementById('statusControl').value;
-  const info = linkify(caseInfoDiv.innerHTML);
-  const updatedInfo = status === 'published' ? formatClinicalHeadings(info) : info;
-  const updatedTitle = caseTitle.textContent;
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const caseId = urlParams.get('caseId');
-  if (!caseId) { alert('No case selected'); return; }
-
-  try {
-    const db = firebase.firestore();
-    await db.collection('MedicalCases').doc(caseId).update({
-      info: updatedInfo,
-      title: updatedTitle,
-      status,
-      updatedBy: {uid: access.user.uid, email: access.user.email},
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    caseInfoDiv.innerHTML = updatedInfo;
-    alert('Changes saved!');
-  } catch (err) {
-    console.error('Error saving changes:', err);
-    alert('Failed to save changes. See console.');
-  }
-});
-
 // Convert URLs in text to clickable links
 function linkify(html) {
   // Create a temporary container
@@ -435,14 +376,14 @@ function linkify(html) {
 <script>
 function setPresentationMode(presenting) {
   document.body.classList.toggle('presentation', presenting);
-  const editable = !presenting && window.currentAccess?.role === 'admin';
+
   ['caseTitle', 'caseInfo'].forEach(id => {
     const element = document.getElementById(id);
-    element.contentEditable = String(editable);
+    element.contentEditable = 'false';
     if (presenting) element.blur();
   });
-  document.getElementById('statusControl').disabled = !editable;
-  document.getElementById('saveChangesBtn').disabled = !editable;
+
+
 }
 
 function togglePresentation() {

@@ -276,7 +276,7 @@ window.onload = async () => {
         const menu = document.createElement('div'); menu.className='card-menu';
         const toggle = document.createElement('button'); toggle.className='menu-toggle'; toggle.textContent='⋮'; toggle.setAttribute('aria-label',`Actions for ${data.title}`);
         const panel = document.createElement('div'); panel.className='menu-panel';
-        const edit = document.createElement('button'); edit.textContent='Edit'; edit.onclick=e=>{e.stopPropagation();location.href=`viewcase.html?caseId=${caseId}&edit=1`;};
+        const edit = document.createElement('button'); edit.textContent='Edit'; edit.onclick=e=>{e.stopPropagation();location.href=`newcase.html?caseId=${encodeURIComponent(caseId)}`;};
         const remove = document.createElement('button'); remove.textContent='Delete'; remove.className='danger';
         remove.onclick = async e => {
           e.stopPropagation();

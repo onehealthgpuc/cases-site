@@ -88,6 +88,8 @@
   input[type="date"]::-webkit-calendar-picker-indicator { opacity:1; cursor:pointer; }
   .privacy-check { display:flex; gap:10px; align-items:flex-start; padding:14px; background:#fff4e8; border:1px solid #f06a22; border-radius:6px; }
   .privacy-check input { margin-top:3px; }
+  #caseFields { border:0; padding:0; margin:0; min-width:0; }
+  .editor-actions { display:flex; align-items:center; gap:16px; }
 </style>
 <link rel="stylesheet" href="design-system.css?v=5">
 </head>
@@ -100,20 +102,22 @@
 
 <main>
   <div class="page-heading"><h1>Add clinical case</h1><p>Capture and publish a de-identified urgent care learning case.</p></div>
+  <p id="editorStatus" role="status" aria-live="polite">Loading case editor…</p>
+  <fieldset id="caseFields" disabled>
   <div class="form-group">
     <label for="title">Case Title</label>
     <input type="text" id="title" placeholder="Enter case title">
   </div>
 
   <div class="form-group">
-    <label for="info">Case Information</label>
+    <label for="noteInput">Case Information</label>
     <div id="toolbar">
       <button type="button" onclick="formatText('bold')"><b>B</b></button>
       <button type="button" onclick="formatText('italic')"><i>I</i></button>
       <button type="button" onclick="formatText('underline')"><u>U</u></button>
       <button type="button" class="highlight" onclick="formatText('hiliteColor','#ffff00')">H</button>
     </div>
-    <div id="noteInput" contenteditable="true"></div>
+    <div id="noteInput" contenteditable="false"></div>
   </div>
 
   <div class="metadata-grid">
@@ -153,7 +157,11 @@
 
   <div id="previewContainer"></div>
 
-  <button id="saveBtn">Save Case</button>
+  <div class="editor-actions">
+    <button id="saveBtn">Save Case</button>
+    <a id="cancelEdit" href="index.html">Cancel</a>
+  </div>
+  </fieldset>
 
 </main>
 
@@ -180,8 +188,70 @@ const uploadStatus = document.getElementById('uploadStatus');
 
 const db = firebase.firestore();
 const adminAccess = requireAccess('admin');
+const editingCaseId = new URLSearchParams(window.location.search).get('caseId');
+let editorReady = false;
 const today = new Date();
-document.getElementById('publishedDate').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+function dateInputValue(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+document.getElementById('publishedDate').value = dateInputValue(today);
+
+async function loadEditor() {
+  await adminAccess;
+  if (editingCaseId) {
+    document.title = 'Edit Medical Case';
+    document.querySelector('.page-heading h1').textContent = 'Edit clinical case';
+    document.querySelector('.page-heading p').textContent = 'Update the case details, publication date, and attachments.';
+    saveBtn.textContent = 'Save Changes';
+    document.getElementById('cancelEdit').href = `viewcase.html?caseId=${encodeURIComponent(editingCaseId)}`;
+    const snapshot = await db.collection('MedicalCases').doc(editingCaseId).get();
+    if (!snapshot.exists) throw new Error('This case could not be found. Return Home and choose another case.');
+    const data = snapshot.data();
+    document.getElementById('title').value = data.title || '';
+    noteInput.innerHTML = data.info || '';
+    document.getElementById('tags').value = (data.tags || []).join(', ');
+    document.getElementById('difficulty').value = data.difficulty || '';
+    document.getElementById('duration').value = data.durationMinutes ?? '';
+    document.getElementById('status').value = data.status || 'published';
+    const publicationDate = data.publishedAt || data.timestamp;
+    if (publicationDate?.toDate) document.getElementById('publishedDate').value = dateInputValue(publicationDate.toDate());
+    uploadedFiles = (data.files || []).map(file => ({...file}));
+    uploadedFiles.forEach(addFilePreview);
+    uploadStatus.textContent = `${uploadedFiles.length} attachment(s). Add more files or remove an attachment to replace it. Changes take effect when saved.`;
+  }
+  editorReady = true;
+  noteInput.contentEditable = 'true';
+  document.getElementById('caseFields').disabled = false;
+  document.getElementById('editorStatus').textContent = '';
+}
+
+loadEditor().catch(error => {
+  console.error('Unable to load editor:', error);
+  document.getElementById('editorStatus').textContent = editingCaseId
+    ? 'Unable to load this case. Refresh to retry, or return Home. Nothing has been changed.'
+    : 'Unable to load the editor. Refresh to retry.';
+});
+
+function addFilePreview(uploaded) {
+  const img=document.createElement('img');
+  img.src=uploaded.previewUrl || (uploaded.type === 'pdf' ? 'pdf-icon.png' : uploaded.url);
+  img.alt=uploaded.name || 'Case attachment';
+  if (uploaded.type === 'pdf') img.onerror=()=>{img.onerror=null; img.src='pdf-icon.png';};
+  const wrapper=document.createElement('div'); wrapper.className='preview-wrapper';
+  const a=document.createElement('a'); a.href=uploaded.url; a.target='_blank'; a.rel='noopener noreferrer'; a.appendChild(img);
+  const name=document.createElement('div'); name.textContent=uploaded.name || 'Case attachment';
+  name.style.overflowWrap='anywhere';
+  const remove=document.createElement('button'); remove.type='button'; remove.textContent='Remove';
+  remove.setAttribute('aria-label', `Remove ${uploaded.name || 'attachment'}`);
+  remove.onclick=()=>{
+    if (!editorReady || isUploading || isSaving) return;
+    uploadedFiles=uploadedFiles.filter(item=>item!==uploaded);
+    wrapper.remove();
+    uploadStatus.textContent=`${uploadedFiles.length} file(s) ready to save. Attachment changes take effect when saved.`;
+  };
+  wrapper.append(a,name,remove);
+  previewContainer.appendChild(wrapper);
+}
 
 function formatText(command,value=null){ document.execCommand(command,false,value); }
 
@@ -201,7 +271,7 @@ async function uploadToCloudinary(file){
 }
 
 fileInput.addEventListener('change', async (e)=>{
-  if (isUploading || isSaving) return;
+  if (!editorReady || isUploading || isSaving) return;
   const files=Array.from(e.target.files||[]);
   fileInput.value = '';
   if (!files.length) return;
@@ -219,21 +289,7 @@ fileInput.addEventListener('change', async (e)=>{
       try{
         const uploaded=await uploadToCloudinary(file);
         uploadedFiles.push(uploaded);
-        const img=document.createElement('img'); img.src=uploaded.previewUrl||uploaded.url; img.alt=uploaded.name;
-        const wrapper=document.createElement('div'); wrapper.className='preview-wrapper';
-        const a=document.createElement('a'); a.href=uploaded.url; a.target='_blank'; a.rel='noopener noreferrer'; a.appendChild(img);
-        const name=document.createElement('div'); name.textContent=uploaded.name;
-        name.style.overflowWrap='anywhere';
-        const remove=document.createElement('button'); remove.type='button'; remove.textContent='Remove';
-        remove.setAttribute('aria-label', `Remove ${uploaded.name}`);
-        remove.onclick=()=>{
-          if (isUploading || isSaving) return;
-          uploadedFiles=uploadedFiles.filter(item=>item!==uploaded);
-          wrapper.remove();
-          uploadStatus.textContent=`${uploadedFiles.length} file(s) ready to save.`;
-        };
-        wrapper.append(a,name,remove);
-        previewContainer.appendChild(wrapper);
+        addFilePreview(uploaded);
       }catch(err){console.error('Upload failed:',err); failed.push(file.name);}
     }
     uploadStatus.textContent = `${uploadedFiles.length} file(s) ready to save.` +
@@ -249,7 +305,7 @@ fileInput.addEventListener('change', async (e)=>{
 });
 
 saveBtn.addEventListener('click', async ()=>{
-  if (isUploading || isSaving) return;
+  if (!editorReady || isUploading || isSaving) return;
   const access = await adminAccess;
   if (isUploading || isSaving) return;
   const title=document.getElementById('title').value.trim();
@@ -259,33 +315,47 @@ saveBtn.addEventListener('click', async ()=>{
   const tags=document.getElementById('tags').value.split(',').map(tag=>tag.trim().toLowerCase()).filter(Boolean);
   const difficulty=document.getElementById('difficulty').value;
   const durationMinutes=Number(document.getElementById('duration').value)||null;
+  if (!document.getElementById('duration').checkValidity()) return alert('Discussion time must be a whole number from 1 to 240 minutes.');
   const status=document.getElementById('status').value;
   if (status === 'published') info = formatClinicalHeadings(info);
   const publishedDateValue=document.getElementById('publishedDate').value;
-  if(!publishedDateValue) return alert('Publication date is required.');
+  if(!publishedDateValue || !document.getElementById('publishedDate').checkValidity()) return alert('A valid publication date is required.');
   const publishedAt=firebase.firestore.Timestamp.fromDate(new Date(`${publishedDateValue}T12:00:00`));
-  const filesForFirestore=(uploadedFiles||[]).map(f=>({name:f.name,url:f.url,previewUrl:f.previewUrl||f.url,type:f.type}));
+  const filesForFirestore=(uploadedFiles||[]).map(f=>({...f,name:f.name||'Case attachment',url:f.url,previewUrl:f.previewUrl||f.url,type:f.type}));
   isSaving = true;
   saveBtn.disabled = true;
   fileInput.disabled = true;
+  document.getElementById('caseFields').disabled = true;
+  noteInput.contentEditable = 'false';
   try{
-    const docRef=await db.collection('MedicalCases').add({
+    const caseData = {
       title, info, files:filesForFirestore,
       tags, difficulty, durationMinutes, status, publishedAt,
       deidentifiedConfirmed:true,
-      createdBy:{uid:access.user.uid,email:access.user.email},
       updatedBy:{uid:access.user.uid,email:access.user.email},
-      timestamp:firebase.firestore.FieldValue.serverTimestamp(),
-      updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-      isNew:true
-    });
-    alert(status === 'published' ? 'Case published!' : 'Draft saved!');
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+    let docRef;
+    if (editingCaseId) {
+      docRef = db.collection('MedicalCases').doc(editingCaseId);
+      await docRef.update(caseData);
+    } else {
+      docRef = await db.collection('MedicalCases').add({
+        ...caseData,
+        createdBy:{uid:access.user.uid,email:access.user.email},
+        timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+        isNew:true
+      });
+    }
+    alert(editingCaseId ? 'Changes saved!' : status === 'published' ? 'Case published!' : 'Draft saved!');
     window.location.href=`viewcase.html?caseId=${docRef.id}`;
   }catch(err){
     console.error('Error saving case:',err); alert('Failed to save case.');
     isSaving = false;
     saveBtn.disabled = false;
     fileInput.disabled = false;
+    document.getElementById('caseFields').disabled = false;
+    noteInput.contentEditable = 'true';
   }
 });
 </script>
