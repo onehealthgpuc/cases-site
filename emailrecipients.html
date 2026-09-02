@@ -20,6 +20,8 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-auth.js"></script>
 <link rel="stylesheet" href="design-system.css?v=5">
+<link rel="stylesheet" href="ui-feedback.css">
+<script src="ui-dialogs.js"></script>
 </head>
 <body>
 
@@ -53,7 +55,7 @@
       const editBtn = document.createElement('button');
       editBtn.textContent = '✏️';
       editBtn.onclick = async () => {
-        const newEmail = prompt('Edit email:', email);
+        const newEmail = await appPrompt('Edit email:', email);
         if(newEmail && newEmail !== email){
           await db.collection('EmailRecipients').doc(email).delete();
           await db.collection('EmailRecipients').doc(newEmail).set({ email: newEmail });
@@ -64,7 +66,7 @@
       const deleteBtn = document.createElement('button');
       deleteBtn.textContent = '🗑️';
       deleteBtn.onclick = async () => {
-        if(confirm(`Delete ${email}?`)){
+        if(await appConfirm(`Delete ${email}?`)){
           await db.collection('EmailRecipients').doc(email).delete();
           renderEmails();
         }
@@ -81,14 +83,14 @@
   saveEmailBtn.addEventListener('click', async () => {
     await adminAccess;
     const email = newEmailInput.value.trim();
-    if(!email) return alert('Enter an email!');
+    if(!email) return await appAlert('Enter an email!');
     try {
       await db.collection('EmailRecipients').doc(email).set({ email });
       newEmailInput.value = '';
       renderEmails();
     } catch(err) {
       console.error(err);
-      alert('Failed to save email.');
+      await appAlert('Failed to save email.');
     }
   });
 

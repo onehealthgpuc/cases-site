@@ -121,6 +121,8 @@
   (function(){ emailjs.init("SlgDGx0oPoAoDrWia"); })();
 </script>
 <link rel="stylesheet" href="design-system.css?v=5">
+<link rel="stylesheet" href="ui-feedback.css">
+<script src="ui-dialogs.js"></script>
 </head>
 <body>
 
@@ -289,9 +291,9 @@ window.onload = async () => {
         const remove = document.createElement('button'); remove.textContent='Delete'; remove.className='danger';
         remove.onclick = async e => {
           e.stopPropagation();
-          if(!confirm(`Permanently delete “${data.title || 'Untitled Case'}”?`)) return;
+          if(!await appConfirm(`Permanently delete “${data.title || 'Untitled Case'}”?`)) return;
           try { await db.collection('MedicalCases').doc(caseId).delete(); allCases=allCases.filter(c=>c.id!==caseId); applyFilters(); }
-          catch(err){ console.error(err); alert('Failed to delete case.'); }
+          catch(err){ console.error(err); await appAlert('Failed to delete case.'); }
         };
         toggle.onclick=e=>{e.stopPropagation();document.querySelectorAll('.menu-panel.open').forEach(p=>{if(p!==panel)p.classList.remove('open');});panel.classList.toggle('open');};
         panel.onclick=e=>e.stopPropagation(); panel.append(edit,remove); menu.append(toggle,panel); card.appendChild(menu);
@@ -334,10 +336,10 @@ window.onload = async () => {
   passwordBtn.addEventListener('click', async () => {
     try {
       await firebase.auth().sendPasswordResetEmail(access.user.email);
-      alert(`A secure password-change link was sent to ${access.user.email}.`);
+      await appAlert(`A secure password-change link was sent to ${access.user.email}.`);
     } catch (error) {
       console.error(error);
-      alert('Unable to send the password-change email.');
+      await appAlert('Unable to send the password-change email.');
     }
   });
 
@@ -346,7 +348,7 @@ window.onload = async () => {
     try {
       const snapshot = await db.collection('EmailRecipients').get();
       const emails = snapshot.docs.map(doc => doc.data().email);
-      if(emails.length === 0) return alert("No recipients saved!");
+      if(emails.length === 0) return await appAlert("No recipients saved!");
 
       // Latest case info
       const latestCase = allCases[0];
@@ -368,10 +370,10 @@ window.onload = async () => {
         }
       }
 
-      alert("Ping email sent to all recipients!");
+      await appAlert("Ping email sent to all recipients!");
     } catch(err) {
       console.error("Failed to send ping:", err);
-      alert("Failed to send ping. Check console for details.");
+      await appAlert("Failed to send ping. Check console for details.");
     }
   });
 

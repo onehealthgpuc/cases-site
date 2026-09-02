@@ -92,6 +92,8 @@
   .editor-actions { display:flex; align-items:center; gap:16px; }
 </style>
 <link rel="stylesheet" href="design-system.css?v=5">
+<link rel="stylesheet" href="ui-feedback.css">
+<script src="ui-dialogs.js"></script>
 </head>
 <body>
 
@@ -276,7 +278,7 @@ fileInput.addEventListener('change', async (e)=>{
   fileInput.value = '';
   if (!files.length) return;
   if (!document.getElementById('deidentified').checked) {
-    return alert('Confirm that the case is de-identified before uploading files.');
+    return await appAlert('Confirm that the case is de-identified before uploading files.');
   }
   isUploading = true;
   fileInput.disabled = true;
@@ -310,16 +312,16 @@ saveBtn.addEventListener('click', async ()=>{
   if (isUploading || isSaving) return;
   const title=document.getElementById('title').value.trim();
   let info=noteInput.innerHTML.trim();
-  if(!title) return alert('Title is required');
-  if(!document.getElementById('deidentified').checked) return alert('You must confirm the case is de-identified.');
+  if(!title) return await appAlert('Title is required');
+  if(!document.getElementById('deidentified').checked) return await appAlert('You must confirm the case is de-identified.');
   const tags=document.getElementById('tags').value.split(',').map(tag=>tag.trim().toLowerCase()).filter(Boolean);
   const difficulty=document.getElementById('difficulty').value;
   const durationMinutes=Number(document.getElementById('duration').value)||null;
-  if (!document.getElementById('duration').checkValidity()) return alert('Discussion time must be a whole number from 1 to 240 minutes.');
+  if (!document.getElementById('duration').checkValidity()) return await appAlert('Discussion time must be a whole number from 1 to 240 minutes.');
   const status=document.getElementById('status').value;
   if (status === 'published') info = formatClinicalHeadings(info);
   const publishedDateValue=document.getElementById('publishedDate').value;
-  if(!publishedDateValue || !document.getElementById('publishedDate').checkValidity()) return alert('A valid publication date is required.');
+  if(!publishedDateValue || !document.getElementById('publishedDate').checkValidity()) return await appAlert('A valid publication date is required.');
   const publishedAt=firebase.firestore.Timestamp.fromDate(new Date(`${publishedDateValue}T12:00:00`));
   const filesForFirestore=(uploadedFiles||[]).map(f=>({...f,name:f.name||'Case attachment',url:f.url,previewUrl:f.previewUrl||f.url,type:f.type}));
   isSaving = true;
@@ -347,10 +349,10 @@ saveBtn.addEventListener('click', async ()=>{
         isNew:true
       });
     }
-    alert(editingCaseId ? 'Changes saved!' : status === 'published' ? 'Case published!' : 'Draft saved!');
+    await appAlert(editingCaseId ? 'Changes saved!' : status === 'published' ? 'Case published!' : 'Draft saved!');
     window.location.href=`viewcase.html?caseId=${docRef.id}`;
   }catch(err){
-    console.error('Error saving case:',err); alert('Failed to save case.');
+    console.error('Error saving case:',err); await appAlert('Failed to save case.');
     isSaving = false;
     saveBtn.disabled = false;
     fileInput.disabled = false;

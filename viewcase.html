@@ -146,6 +146,8 @@
 
 <link rel="stylesheet" href="design-system.css?v=5">
 <link rel="stylesheet" href="case-layout.css">
+<link rel="stylesheet" href="ui-feedback.css">
+<script src="ui-dialogs.js"></script>
 </head>
 <body>
 
@@ -215,7 +217,7 @@ window.onload = async () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   const caseId = urlParams.get('caseId');
-  if (!caseId) { alert('No case selected'); return; }
+  if (!caseId) { await appAlert('No case selected'); return; }
   if (access.role === 'admin') {
     const editUrl = `newcase.html?caseId=${encodeURIComponent(caseId)}`;
     if (urlParams.get('edit') === '1') { window.location.replace(editUrl); return; }
@@ -226,7 +228,7 @@ window.onload = async () => {
 
   try {
     const doc = await db.collection('MedicalCases').doc(caseId).get();
-    if (!doc.exists) { alert('Case not found'); return; }
+    if (!doc.exists) { await appAlert('Case not found'); return; }
 
     const data = doc.data();
     document.getElementById('caseTitle').textContent = data.title;
@@ -314,7 +316,7 @@ window.onload = async () => {
 
   } catch (err) {
     console.error('Error loading case:', err);
-    alert('Failed to load case. Check console.');
+    await appAlert('Failed to load case. Check console.');
   }
 };
 

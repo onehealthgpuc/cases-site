@@ -21,6 +21,8 @@
     @media(max-width:650px){.add-grid{grid-template-columns:1fr} table{font-size:12px}}
   </style>
   <link rel="stylesheet" href="design-system.css?v=5">
+<link rel="stylesheet" href="ui-feedback.css">
+<script src="ui-dialogs.js"></script>
 </head>
 <body>
 <main>
@@ -77,9 +79,9 @@
           const nickname=nicknameInput.value.trim();
           await doc.ref.set({role:roleSelect.value,email:data.email||'',nickname},{merge:true});
           nicknameInput.value=nickname;
-          alert('User updated. The nickname will appear when they next open or refresh Home.');
+          await appAlert('User updated. The nickname will appear when they next open or refresh Home.');
         } catch(error) {
-          console.error(error); alert('Unable to update this user.');
+          console.error(error); await appAlert('Unable to update this user.');
         } finally { save.disabled=false; }
       };
       [data.email||'Not recorded',doc.id].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
@@ -94,7 +96,7 @@
     const email=document.getElementById('email').value.trim().toLowerCase();
     const role=document.getElementById('role').value;
     const nickname=document.getElementById('nickname').value.trim();
-    if(!email) return alert('Email is required.');
+    if(!email) return await appAlert('Email is required.');
     const button=document.getElementById('saveUser'); button.disabled=true; button.textContent='Sending…';
     try {
       const credential=await provisioningAuth.createUserWithEmailAndPassword(email,randomTemporaryPassword());
@@ -105,14 +107,14 @@
       document.getElementById('email').value='';
       document.getElementById('nickname').value='';
       await renderUsers();
-      alert(`Invitation sent to ${email}. They must use the email link to choose their password.`);
+      await appAlert(`Invitation sent to ${email}. They must use the email link to choose their password.`);
     } catch(error) {
       console.error(error);
       if (provisioningAuth.currentUser) await provisioningAuth.signOut();
-      alert(error.code==='auth/email-already-in-use' ? 'That email already has a Firebase login. Add its role using Firebase Console, or use Forgot password on the login page.' : 'Unable to invite this user.');
+      await appAlert(error.code==='auth/email-already-in-use' ? 'That email already has an account. Use Forgot password to reset access, or contact an administrator.' : 'Unable to invite this user.');
     } finally { button.disabled=false; button.textContent='Invite user'; }
   };
-  renderUsers().catch(error=>{console.error(error);alert('Unable to load user roles.');});
+  renderUsers().catch(async error=>{console.error(error);await appAlert('Unable to load user roles.');});
 </script>
 </body>
 </html>
