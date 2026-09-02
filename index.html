@@ -107,6 +107,13 @@
   #settingsIcon:hover {
     background: #ffe4cc;
   }
+  .library-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; }
+  .library-heading > div { flex:1; min-width:0; }
+  .library-heading #userStatus { flex:0 1 auto; max-width:45%; padding:6px 0 0; font-size:17px; font-weight:600; text-align:right; white-space:normal; overflow-wrap:anywhere; }
+  @media(max-width:620px) {
+    .library-heading { gap:12px; }
+    .library-heading #userStatus { font-size:14px; }
+  }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@2/dist/email.min.js"></script>
@@ -118,7 +125,10 @@
 <body>
 
   <img id="logo" src="onehealth-logo.png" alt="OneHealth Logo">
-  <div class="page-heading"><h1>Clinical case library</h1><p>Focused learning from real urgent care presentations.</p></div>
+  <div class="page-heading library-heading">
+    <div><h1>Clinical case library</h1><p>Focused learning from real urgent care presentations.</p></div>
+    <span id="userStatus" aria-live="polite"></span>
+  </div>
 
   <!-- Controls Row -->
   <div class="controls">
@@ -128,7 +138,6 @@
     <button id="pingBtn" title="Send Ping">📩</button>
     <button id="settingsIcon" class="control-item">⚙️</button>
     <button id="usersBtn">Users</button>
-    <span id="userStatus"></span>
     <button id="passwordBtn">Change password</button>
     <button onclick="signOut()">Sign out</button>
   </div>
