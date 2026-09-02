@@ -14,6 +14,7 @@
     input { border:1px solid #bbb; }
     button { margin-top:20px; border:0; background:#f06a22; color:white; font-weight:bold; cursor:pointer; }
     button:disabled { opacity:.65; cursor:wait; }
+    #forgotBtn { margin-top:10px; background:transparent; color:#b84d16; }
     #message { min-height:20px; margin-top:14px; color:#b00020; text-align:center; }
   </style>
 </head>
@@ -26,6 +27,7 @@
     <label for="password">Password</label>
     <input id="password" type="password" autocomplete="current-password" required>
     <button id="submitBtn" type="submit">Sign in</button>
+    <button id="forgotBtn" type="button">Forgot password?</button>
     <div id="message" role="alert"></div>
   </form>
 </main>
@@ -60,6 +62,23 @@
     } catch (error) {
       message.textContent = error.code ? 'Sign-in failed. Check your email and password.' : error.message;
       button.disabled = false;
+    }
+  });
+
+  document.getElementById('forgotBtn').addEventListener('click', async () => {
+    const email = document.getElementById('email').value.trim();
+    if (!email) {
+      message.textContent = 'Enter your email address first.';
+      document.getElementById('email').focus();
+      return;
+    }
+    try {
+      await firebase.auth().sendPasswordResetEmail(email);
+      message.style.color = '#176b2c';
+      message.textContent = 'Password reset email sent. Check your inbox and junk folder.';
+    } catch (error) {
+      message.style.color = '#b00020';
+      message.textContent = 'Unable to send the reset email. Check the address or contact an administrator.';
     }
   });
 </script>

@@ -128,6 +128,7 @@
     <button id="settingsIcon" class="control-item">⚙️</button>
     <button id="usersBtn">Users</button>
     <span id="userStatus"></span>
+    <button id="passwordBtn">Change password</button>
     <button onclick="signOut()">Sign out</button>
   </div>
 
@@ -158,6 +159,7 @@ window.onload = async () => {
   const pingBtn = document.getElementById('pingBtn');
   const usersBtn = document.getElementById('usersBtn');
   const tagFilter = document.getElementById('tagFilter');
+  const passwordBtn = document.getElementById('passwordBtn');
 
   let allCases = [];
   document.getElementById('userStatus').textContent = `${access.user.email} (${access.role})`;
@@ -314,6 +316,15 @@ window.onload = async () => {
     window.open('emailrecipients.html', '_blank');
   });
   usersBtn.addEventListener('click', () => { window.open('users.html','_blank'); });
+  passwordBtn.addEventListener('click', async () => {
+    try {
+      await firebase.auth().sendPasswordResetEmail(access.user.email);
+      alert(`A secure password-change link was sent to ${access.user.email}.`);
+    } catch (error) {
+      console.error(error);
+      alert('Unable to send the password-change email.');
+    }
+  });
 
   // --- Ping button ---
   pingBtn.addEventListener('click', async () => {

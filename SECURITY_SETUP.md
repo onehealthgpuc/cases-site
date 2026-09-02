@@ -12,7 +12,7 @@ The website uses Firebase Authentication and a Firestore `users` document to ass
 
 Create and test the first admin before publishing the restrictive rules. Password accounts are created in Firebase Authentication; authenticated administrators can assign website roles from the site's **Users** page.
 
-After the first administrator is working, create additional password accounts in Firebase Authentication and use the website's **Users** page to assign their UID either viewer or admin access.
+After the first administrator is working, use the website's **Users** page to invite additional people. The site creates their Authentication account with a random temporary password, assigns the selected role, and emails a secure Firebase password-reset link so they choose their own password. Users can request another link from **Forgot password** at any time.
 
 ## Important file-upload limitation
 

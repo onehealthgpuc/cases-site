@@ -10,7 +10,7 @@
     main { max-width:800px; margin:auto; background:#fff; border-radius:10px; padding:24px; box-shadow:0 3px 12px #0002; }
     h1 { margin-top:0; }
     .notice { background:#fff4e8; border-left:4px solid #f06a22; padding:12px; }
-    .add-grid { display:grid; grid-template-columns:1fr 1.4fr auto auto; gap:8px; margin:20px 0; }
+    .add-grid { display:grid; grid-template-columns:1.5fr auto auto; gap:8px; margin:20px 0; }
     input,select,button { padding:9px; border:1px solid #bbb; border-radius:5px; }
     button { background:#f06a22; color:#fff; border:0; cursor:pointer; }
     table { width:100%; border-collapse:collapse; }
@@ -21,12 +21,11 @@
 <body>
 <main>
   <h1>User roles</h1>
-  <p class="notice">Create the Email/Password account in Firebase Authentication first, then enter its UID here. This page controls website access but does not create passwords.</p>
+  <p class="notice">Invite a person by email. They will receive a secure Firebase email and choose their own password. The temporary system-generated password is never displayed or shared.</p>
   <div class="add-grid">
-    <input id="uid" placeholder="Firebase user UID" aria-label="Firebase user UID">
     <input id="email" type="email" placeholder="User email" aria-label="User email">
     <select id="role" aria-label="Role"><option value="viewer">Viewer</option><option value="admin">Admin</option></select>
-    <button id="saveUser">Save access</button>
+    <button id="saveUser">Invite user</button>
   </div>
   <table>
     <thead><tr><th>Email</th><th>UID</th><th>Role</th><th></th></tr></thead>
@@ -41,6 +40,13 @@
   const db=firebase.firestore();
   const adminAccess=requireAccess('admin');
   const rows=document.getElementById('userRows');
+  const provisioningApp = firebase.apps.find(app=>app.name==='UserProvisioning') || firebase.initializeApp(FIREBASE_CONFIG,'UserProvisioning');
+  const provisioningAuth = provisioningApp.auth();
+
+  function randomTemporaryPassword(){
+    const bytes=new Uint8Array(24); crypto.getRandomValues(bytes);
+    return `A!9${Array.from(bytes,b=>b.toString(36)).join('')}`;
+  }
 
   async function renderUsers(){
     await adminAccess;
@@ -60,12 +66,24 @@
 
   document.getElementById('saveUser').onclick=async()=>{
     const access=await adminAccess;
-    const uid=document.getElementById('uid').value.trim();
     const email=document.getElementById('email').value.trim().toLowerCase();
     const role=document.getElementById('role').value;
-    if(!uid||!email) return alert('UID and email are required.');
-    await db.collection('users').doc(uid).set({email,role,updatedBy:access.user.email,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
-    document.getElementById('uid').value='';document.getElementById('email').value='';await renderUsers();
+    if(!email) return alert('Email is required.');
+    const button=document.getElementById('saveUser'); button.disabled=true; button.textContent='Sending…';
+    try {
+      const credential=await provisioningAuth.createUserWithEmailAndPassword(email,randomTemporaryPassword());
+      const uid=credential.user.uid;
+      await provisioningAuth.signOut();
+      await db.collection('users').doc(uid).set({email,role,invitedBy:access.user.email,createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      await firebase.auth().sendPasswordResetEmail(email);
+      document.getElementById('email').value='';
+      await renderUsers();
+      alert(`Invitation sent to ${email}. They must use the email link to choose their password.`);
+    } catch(error) {
+      console.error(error);
+      if (provisioningAuth.currentUser) await provisioningAuth.signOut();
+      alert(error.code==='auth/email-already-in-use' ? 'That email already has a Firebase login. Add its role using Firebase Console, or use Forgot password on the login page.' : 'Unable to invite this user.');
+    } finally { button.disabled=false; button.textContent='Invite user'; }
   };
   renderUsers().catch(error=>{console.error(error);alert('Unable to load user roles.');});
 </script>
