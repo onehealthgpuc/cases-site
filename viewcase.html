@@ -115,6 +115,15 @@
     cursor: pointer;
     display: none;
   }
+  #caseMeta { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; margin-bottom:16px; }
+  .meta-chip { background:#e9e9e9; color:#111; padding:4px 9px; border-radius:14px; font-size:12px; }
+  #auditInfo { margin-top:24px; color:#666; font-size:12px; text-align:center; }
+  #statusControl { display:none; padding:5px; border-radius:5px; }
+  body.presentation { font-size:125%; max-width:1200px; margin:auto; background:#fff; }
+  body.presentation header, body.presentation #formattingBtns, body.presentation #saveChangesBtn, body.presentation #auditInfo { display:none !important; }
+  body.presentation #caseInfo { font-size:1.2em; line-height:1.7; }
+  #exitPresentation { display:none; position:fixed; right:15px; top:15px; z-index:20; }
+  body.presentation #exitPresentation { display:block; }
 </style>
 <style>
   #imgModal:hover #buttonsOverlay {
@@ -134,11 +143,15 @@
   <div id="controls">
     <span id="userStatus"></span>
     <button id="homeBtn" onclick="window.location.href='index.html'">Home</button>
+    <button onclick="togglePresentation()">Present</button>
+    <select id="statusControl" aria-label="Case visibility"><option value="draft">Draft</option><option value="published">Published</option></select>
     <button onclick="signOut()">Sign out</button>
   </div>
 </header>
 
 <h1 id="caseTitle">Loading...</h1>
+<div id="caseMeta"></div>
+<button id="exitPresentation" onclick="togglePresentation()">Exit presentation</button>
 
 <div id="filesContainer"></div>
 
@@ -151,6 +164,7 @@
 
 <div id="caseInfo" contenteditable="false"></div>
 <button id="saveChangesBtn">Save Changes</button>
+<div id="auditInfo"></div>
 <!-- Image Zoom Modal -->
 <div id="imgModal" style="
   display:none;
@@ -228,6 +242,15 @@ window.onload = async () => {
 
     const data = doc.data();
     document.getElementById('caseTitle').textContent = data.title;
+    document.getElementById('statusControl').value = data.status || 'published';
+    const meta = document.getElementById('caseMeta');
+    [...(data.tags || []), data.difficulty, data.durationMinutes ? `${data.durationMinutes} min` : ''].filter(Boolean).forEach(value => {
+      const chip=document.createElement('span'); chip.className='meta-chip'; chip.textContent=value; meta.appendChild(chip);
+    });
+    const created = data.createdBy?.email ? `Created by ${data.createdBy.email}` : '';
+    const updated = data.updatedBy?.email ? `Last edited by ${data.updatedBy.email}` : '';
+    const updatedDate = data.updatedAt?.toDate ? data.updatedAt.toDate().toLocaleString() : '';
+    document.getElementById('auditInfo').textContent = [created, updated, updatedDate].filter(Boolean).join(' · ');
 
     const filesContainer = document.getElementById('filesContainer');
     filesContainer.innerHTML = '';
@@ -299,6 +322,7 @@ function enableEditing() {
   caseInfoDiv.style.border = '1px solid #ccc';
   document.getElementById('formattingBtns').style.display = 'flex';
   saveBtn.style.display = 'inline-block';
+  document.getElementById('statusControl').style.display = 'inline-block';
   caseTitle.contentEditable = 'true';
   caseTitle.style.borderBottom = '1px dashed #ccc';
 }
@@ -332,7 +356,10 @@ document.getElementById('saveChangesBtn').addEventListener('click', async () => 
     const db = firebase.firestore();
     await db.collection('MedicalCases').doc(caseId).update({
       info: updatedInfo,
-      title: updatedTitle
+      title: updatedTitle,
+      status: document.getElementById('statusControl').value,
+      updatedBy: {uid: access.user.uid, email: access.user.email},
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     alert('Changes saved!');
   } catch (err) {
@@ -534,6 +561,12 @@ function resetZoom() {
 function clearDrawing() {
   if (!ctx) return;
   ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+}
+
+function togglePresentation() {
+  document.body.classList.toggle('presentation');
+  if (document.body.classList.contains('presentation')) document.documentElement.requestFullscreen?.().catch(()=>{});
+  else if (document.fullscreenElement) document.exitFullscreen?.();
 }
 
 

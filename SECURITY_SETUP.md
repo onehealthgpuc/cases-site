@@ -7,10 +7,12 @@ The website uses Firebase Authentication and a Firestore `users` document to ass
 3. In **Authentication > Settings > Authorized domains**, add `onehealthgpuc.github.io` if it is not already listed. Set an appropriate password policy while in Authentication settings.
 4. In **Authentication > Users**, create each person's account. Do not add public self-registration.
 5. Copy the generated UID for each user.
-6. In Firestore, create a `users` collection. Create a document whose ID is exactly the user's UID, with one string field: `role` = `viewer` or `admin`.
+6. For the first administrator, create a `users` collection in Firestore. Create a document whose ID is exactly the user's UID, with one string field: `role` = `admin`.
 7. In **Firestore Database > Rules**, publish the contents of `firestore.rules`.
 
-Create and test the first admin before publishing the restrictive rules. Account creation and role changes remain Firebase Console operations, so website users cannot promote themselves.
+Create and test the first admin before publishing the restrictive rules. Password accounts are created in Firebase Authentication; authenticated administrators can assign website roles from the site's **Users** page.
+
+After the first administrator is working, create additional password accounts in Firebase Authentication and use the website's **Users** page to assign their UID either viewer or admin access.
 
 ## Important file-upload limitation
 

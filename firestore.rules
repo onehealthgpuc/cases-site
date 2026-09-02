@@ -7,7 +7,8 @@ service cloud.firestore {
     function admin() { return signedIn() && role() == 'admin'; }
 
     match /MedicalCases/{caseId} {
-      allow read: if viewerOrAdmin();
+      allow get: if viewerOrAdmin() && (admin() || resource.data.status == 'published');
+      allow list: if admin() || (viewerOrAdmin() && resource.data.status == 'published');
       allow create, update, delete: if admin();
     }
 
@@ -17,7 +18,11 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if signedIn() && (request.auth.uid == userId || admin());
-      allow write: if false;
+      allow create: if admin() && request.resource.data.role in ['viewer', 'admin'];
+      allow update: if admin()
+                    && request.resource.data.role in ['viewer', 'admin']
+                    && (request.auth.uid != userId || request.resource.data.role == 'admin');
+      allow delete: if false;
     }
 
     match /{document=**} { allow read, write: if false; }

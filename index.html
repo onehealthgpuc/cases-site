@@ -62,21 +62,16 @@
     font-size: 12px;
   }
 
-  .delete-btn {
-    margin-top: 10px;
-    padding: 5px 10px;
-    font-size: 12px;
-    background: #e53935;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    display: none;
-  }
-
-  .delete-btn:hover {
-    background: #c62828;
-  }
+  .card-meta { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:8px 0; }
+  .meta-chip { background:#f1f1f1; color:#222; border-radius:12px; padding:3px 7px; font-size:11px; }
+  .status-chip { font-size:11px; font-weight:bold; text-transform:uppercase; color:#8a4200; }
+  .card-menu { position:absolute; left:8px; top:8px; z-index:2; }
+  .menu-toggle { border:0; background:#fff; color:#222; font-size:20px; border-radius:50%; width:30px; height:30px; cursor:pointer; }
+  .menu-panel { display:none; position:absolute; left:0; top:32px; min-width:110px; background:#fff; border:1px solid #ddd; border-radius:6px; box-shadow:0 3px 10px #0003; overflow:hidden; }
+  .menu-panel.open { display:block; }
+  .menu-panel button { display:block; width:100%; padding:8px 10px; border:0; background:#fff; color:#111; text-align:left; cursor:pointer; }
+  .menu-panel button:hover { background:#f3f3f3; }
+  .menu-panel .danger { color:#b00020; }
 
   /* --- Uniform controls bar --- */
   .controls {
@@ -126,10 +121,12 @@
   <!-- Controls Row -->
   <div class="controls">
     <input type="text" id="searchInput" placeholder="Search...">
+    <select id="tagFilter" aria-label="Filter by tag"><option value="">All tags</option></select>
     <button id="rosterBtn">Roster</button>
     <button id="newCaseBtn" onclick="window.location.href='newcase.html'">+ New Case</button>
     <button id="pingBtn" title="Send Ping">📩</button>
     <button id="settingsIcon" class="control-item">⚙️</button>
+    <button id="usersBtn">Users</button>
     <span id="userStatus"></span>
     <button onclick="signOut()">Sign out</button>
   </div>
@@ -159,20 +156,35 @@ window.onload = async () => {
   const searchInput = document.getElementById('searchInput');
   const settingsIcon = document.getElementById('settingsIcon');
   const pingBtn = document.getElementById('pingBtn');
+  const usersBtn = document.getElementById('usersBtn');
+  const tagFilter = document.getElementById('tagFilter');
 
   let allCases = [];
   document.getElementById('userStatus').textContent = `${access.user.email} (${access.role})`;
   document.getElementById('newCaseBtn').style.display = isAdmin ? '' : 'none';
   settingsIcon.style.display = isAdmin ? '' : 'none';
   pingBtn.style.display = isAdmin ? '' : 'none';
-
-  let deleteCodeEntered = isAdmin;
+  usersBtn.style.display = isAdmin ? '' : 'none';
 
   // --- Load Cases ---
   async function loadCases() {
     try {
-      const snapshot = await db.collection('MedicalCases').orderBy('timestamp','desc').get();
+      const query = isAdmin
+        ? db.collection('MedicalCases').orderBy('timestamp','desc')
+        : db.collection('MedicalCases').where('status','==','published');
+      const snapshot = await query.get();
       allCases = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      if (!isAdmin) allCases.sort((a,b)=>(b.timestamp?.toMillis?.()||0)-(a.timestamp?.toMillis?.()||0));
+      if (isAdmin) {
+        const legacy = snapshot.docs.filter(doc => !doc.data().status);
+        if (legacy.length) {
+          const batch = db.batch();
+          legacy.forEach(doc => batch.update(doc.ref, {status:'published'}));
+          await batch.commit();
+          allCases.forEach(item => { if (!item.status) item.status = 'published'; });
+        }
+      }
+      populateTagFilter();
       renderCards(allCases);
     } catch(err) {
       console.error(err);
@@ -191,7 +203,6 @@ window.onload = async () => {
 
       // Click to open case
       card.onclick = (e) => {
-        if(e.target.classList.contains('delete-btn')) return;
         localStorage.setItem(caseId, 'opened');
         window.location.href = `viewcase.html?caseId=${caseId}`;
       };
@@ -214,6 +225,17 @@ window.onload = async () => {
       const title = document.createElement('h2');
       title.textContent = data.title || 'Untitled Case';
       card.appendChild(title);
+
+      const meta = document.createElement('div');
+      meta.className = 'card-meta';
+      [...(data.tags || []).slice(0,3), data.difficulty, data.durationMinutes ? `${data.durationMinutes} min` : '']
+        .filter(Boolean).forEach(value => {
+          const chip = document.createElement('span'); chip.className='meta-chip'; chip.textContent=value; meta.appendChild(chip);
+        });
+      card.appendChild(meta);
+      if (isAdmin && data.status === 'draft') {
+        const status = document.createElement('div'); status.className='status-chip'; status.textContent='Draft'; card.appendChild(status);
+      }
 
       // Timestamp
       if(data.timestamp) {
@@ -241,25 +263,21 @@ window.onload = async () => {
         card.appendChild(badge);
       }
 
-      // Delete button
-      const deleteBtn = document.createElement('button');
-      deleteBtn.textContent = 'Delete';
-      deleteBtn.className = 'delete-btn';
-      deleteBtn.style.display = deleteCodeEntered ? 'inline-block' : 'none';
-      deleteBtn.onclick = async e => {
-        e.stopPropagation();
-        if(!confirm('Are you sure you want to delete this case?')) return;
-        try {
-          await db.collection('MedicalCases').doc(caseId).delete();
-          allCases = allCases.filter(c => c.id !== caseId);
-          renderCards(allCases);
-          alert('Case deleted!');
-        } catch(err) {
-          console.error(err);
-          alert('Failed to delete case.');
-        }
-      };
-      card.appendChild(deleteBtn);
+      if (isAdmin) {
+        const menu = document.createElement('div'); menu.className='card-menu';
+        const toggle = document.createElement('button'); toggle.className='menu-toggle'; toggle.textContent='⋮'; toggle.setAttribute('aria-label',`Actions for ${data.title}`);
+        const panel = document.createElement('div'); panel.className='menu-panel';
+        const edit = document.createElement('button'); edit.textContent='Edit'; edit.onclick=e=>{e.stopPropagation();location.href=`viewcase.html?caseId=${caseId}&edit=1`;};
+        const remove = document.createElement('button'); remove.textContent='Delete'; remove.className='danger';
+        remove.onclick = async e => {
+          e.stopPropagation();
+          if(!confirm(`Permanently delete “${data.title || 'Untitled Case'}”?`)) return;
+          try { await db.collection('MedicalCases').doc(caseId).delete(); allCases=allCases.filter(c=>c.id!==caseId); applyFilters(); }
+          catch(err){ console.error(err); alert('Failed to delete case.'); }
+        };
+        toggle.onclick=e=>{e.stopPropagation();document.querySelectorAll('.menu-panel.open').forEach(p=>{if(p!==panel)p.classList.remove('open');});panel.classList.toggle('open');};
+        panel.onclick=e=>e.stopPropagation(); panel.append(edit,remove); menu.append(toggle,panel); card.appendChild(menu);
+      }
 
       container.appendChild(card);
     });
@@ -267,19 +285,34 @@ window.onload = async () => {
 
   // --- Search ---
   searchInput.addEventListener('input', e => {
-    const query = e.target.value.toLowerCase();
+    applyFilters();
+  });
+  tagFilter.addEventListener('change', applyFilters);
+
+  function applyFilters() {
+    const query = searchInput.value.toLowerCase();
+    const selectedTag = tagFilter.value;
     const filtered = allCases.filter(c => {
       const titleMatch = c.title?.toLowerCase().includes(query);
+      const tagText = (c.tags || []).join(' ').toLowerCase();
+      const tagSearchMatch = tagText.includes(query);
       const dateMatch = c.timestamp?.toDate().toLocaleString().toLowerCase().includes(query);
-      return titleMatch || dateMatch;
+      const selectedTagMatch = !selectedTag || (c.tags || []).includes(selectedTag);
+      return (titleMatch || tagSearchMatch || dateMatch) && selectedTagMatch;
     });
     renderCards(filtered);
-  });
+  }
+
+  function populateTagFilter() {
+    const tags=[...new Set(allCases.flatMap(c=>c.tags||[]))].sort();
+    tags.forEach(tag=>{const option=document.createElement('option');option.value=tag;option.textContent=tag;tagFilter.appendChild(option);});
+  }
 
   // --- Settings icon ---
   settingsIcon.addEventListener('click', () => {
     window.open('emailrecipients.html', '_blank');
   });
+  usersBtn.addEventListener('click', () => { window.open('users.html','_blank'); });
 
   // --- Ping button ---
   pingBtn.addEventListener('click', async () => {

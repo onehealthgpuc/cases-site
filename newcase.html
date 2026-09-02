@@ -78,6 +78,10 @@
   /* Save button */
   #saveBtn { padding:12px 20px; font-size:16px; border:none; border-radius:6px; background:#ff6600; color:white; cursor:pointer; margin-top:20px; font-weight:bold; }
   #saveBtn:hover { background:#e65c00; }
+  .metadata-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
+  select, input[type="number"] { width:100%; padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-size:16px; }
+  .privacy-check { display:flex; gap:10px; align-items:flex-start; padding:14px; background:#fff4e8; border:1px solid #f06a22; border-radius:6px; }
+  .privacy-check input { margin-top:3px; }
 </style>
 </head>
 <body>
@@ -104,10 +108,34 @@
     <div id="noteInput" contenteditable="true"></div>
   </div>
 
+  <div class="metadata-grid">
+    <div class="form-group">
+      <label for="tags">Tags</label>
+      <input type="text" id="tags" placeholder="e.g. urgent care, dermatology">
+    </div>
+    <div class="form-group">
+      <label for="difficulty">Difficulty</label>
+      <select id="difficulty"><option value="">Not specified</option><option>Foundation</option><option>Intermediate</option><option>Advanced</option></select>
+    </div>
+    <div class="form-group">
+      <label for="duration">Discussion time (minutes)</label>
+      <input type="number" id="duration" min="1" max="240" placeholder="15">
+    </div>
+    <div class="form-group">
+      <label for="status">Visibility</label>
+      <select id="status"><option value="draft">Save as draft</option><option value="published">Publish now</option></select>
+    </div>
+  </div>
+
   <div class="form-group">
     <label for="fileInput">Upload Files (Images / PDF)</label>
     <input type="file" id="fileInput" multiple accept="image/*,application/pdf" />
   </div>
+
+  <label class="privacy-check">
+    <input type="checkbox" id="deidentified">
+    <span>I confirm this case and its attachments are de-identified and contain no patient names, NHI numbers, dates of birth, faces, or other identifying information.</span>
+  </label>
 
   <div id="previewContainer"></div>
 
@@ -157,6 +185,10 @@ async function uploadToCloudinary(file){
 
 fileInput.addEventListener('change', async (e)=>{
   await adminAccess;
+  if (!document.getElementById('deidentified').checked) {
+    fileInput.value = '';
+    return alert('Confirm that the case is de-identified before uploading files.');
+  }
   previewContainer.innerHTML='';
   uploadedFiles=[];
   const files=Array.from(e.target.files||[]);
@@ -173,18 +205,28 @@ fileInput.addEventListener('change', async (e)=>{
 });
 
 saveBtn.addEventListener('click', async ()=>{
-  await adminAccess;
+  const access = await adminAccess;
   const title=document.getElementById('title').value.trim();
   const info=noteInput.innerHTML.trim();
   if(!title) return alert('Title is required');
+  if(!document.getElementById('deidentified').checked) return alert('You must confirm the case is de-identified.');
+  const tags=document.getElementById('tags').value.split(',').map(tag=>tag.trim().toLowerCase()).filter(Boolean);
+  const difficulty=document.getElementById('difficulty').value;
+  const durationMinutes=Number(document.getElementById('duration').value)||null;
+  const status=document.getElementById('status').value;
   const filesForFirestore=(uploadedFiles||[]).map(f=>({name:f.name,url:f.url,type:f.type}));
   try{
     const docRef=await db.collection('MedicalCases').add({
       title, info, files:filesForFirestore,
+      tags, difficulty, durationMinutes, status,
+      deidentifiedConfirmed:true,
+      createdBy:{uid:access.user.uid,email:access.user.email},
+      updatedBy:{uid:access.user.uid,email:access.user.email},
       timestamp:firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
       isNew:true
     });
-    alert('Case saved!');
+    alert(status === 'published' ? 'Case published!' : 'Draft saved!');
     window.location.href=`viewcase.html?caseId=${docRef.id}`;
   }catch(err){console.error('Error saving case:',err); alert('Failed to save case.');}
 });

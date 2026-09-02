@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Roles | OneHealth Cases</title>
+  <link rel="stylesheet" href="light-theme.css">
+  <style>
+    body { font-family:Arial,sans-serif; background:#f5f5f5; margin:0; padding:24px; color:#111; }
+    main { max-width:800px; margin:auto; background:#fff; border-radius:10px; padding:24px; box-shadow:0 3px 12px #0002; }
+    h1 { margin-top:0; }
+    .notice { background:#fff4e8; border-left:4px solid #f06a22; padding:12px; }
+    .add-grid { display:grid; grid-template-columns:1fr 1.4fr auto auto; gap:8px; margin:20px 0; }
+    input,select,button { padding:9px; border:1px solid #bbb; border-radius:5px; }
+    button { background:#f06a22; color:#fff; border:0; cursor:pointer; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { text-align:left; padding:10px; border-bottom:1px solid #ddd; word-break:break-word; }
+    @media(max-width:650px){.add-grid{grid-template-columns:1fr} table{font-size:12px}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>User roles</h1>
+  <p class="notice">Create the Email/Password account in Firebase Authentication first, then enter its UID here. This page controls website access but does not create passwords.</p>
+  <div class="add-grid">
+    <input id="uid" placeholder="Firebase user UID" aria-label="Firebase user UID">
+    <input id="email" type="email" placeholder="User email" aria-label="User email">
+    <select id="role" aria-label="Role"><option value="viewer">Viewer</option><option value="admin">Admin</option></select>
+    <button id="saveUser">Save access</button>
+  </div>
+  <table>
+    <thead><tr><th>Email</th><th>UID</th><th>Role</th><th></th></tr></thead>
+    <tbody id="userRows"></tbody>
+  </table>
+</main>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-auth.js"></script>
+<script>
+  const db=firebase.firestore();
+  const adminAccess=requireAccess('admin');
+  const rows=document.getElementById('userRows');
+
+  async function renderUsers(){
+    await adminAccess;
+    const snapshot=await db.collection('users').get();
+    rows.innerHTML='';
+    snapshot.docs.forEach(doc=>{
+      const data=doc.data();
+      const tr=document.createElement('tr');
+      const roleSelect=document.createElement('select');
+      ['viewer','admin'].forEach(role=>{const option=document.createElement('option');option.value=role;option.textContent=role;option.selected=data.role===role;roleSelect.appendChild(option);});
+      const save=document.createElement('button');save.textContent='Update';save.onclick=async()=>{await doc.ref.set({role:roleSelect.value,email:data.email||''},{merge:true});alert('Role updated.');};
+      [data.email||'Not recorded',doc.id].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
+      const roleCell=document.createElement('td');roleCell.appendChild(roleSelect);tr.appendChild(roleCell);
+      const actionCell=document.createElement('td');actionCell.appendChild(save);tr.appendChild(actionCell);rows.appendChild(tr);
+    });
+  }
+
+  document.getElementById('saveUser').onclick=async()=>{
+    const access=await adminAccess;
+    const uid=document.getElementById('uid').value.trim();
+    const email=document.getElementById('email').value.trim().toLowerCase();
+    const role=document.getElementById('role').value;
+    if(!uid||!email) return alert('UID and email are required.');
+    await db.collection('users').doc(uid).set({email,role,updatedBy:access.user.email,updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+    document.getElementById('uid').value='';document.getElementById('email').value='';await renderUsers();
+  };
+  renderUsers().catch(error=>{console.error(error);alert('Unable to load user roles.');});
+</script>
+</body>
+</html>
