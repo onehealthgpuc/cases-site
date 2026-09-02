@@ -80,7 +80,12 @@
   #saveBtn:hover { background:#e65c00; }
   .metadata-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
   select, input[type="number"] { width:100%; padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-size:16px; }
-  input[type="date"] { width:100%; padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-size:16px; }
+  input[type="date"] {
+    width:100%; padding:12px; border:1px solid #ccc; border-radius:6px;
+    box-sizing:border-box; font-size:16px;
+    background-color:#fff !important; color:#000 !important; color-scheme:light;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator { opacity:1; cursor:pointer; }
   .privacy-check { display:flex; gap:10px; align-items:flex-start; padding:14px; background:#fff4e8; border:1px solid #f06a22; border-radius:6px; }
   .privacy-check input { margin-top:3px; }
 </style>
