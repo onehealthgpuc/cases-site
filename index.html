@@ -152,6 +152,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-auth.js"></script>
+<script src="publication-date.js"></script>
 
 <!-- EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
@@ -260,7 +261,7 @@ window.onload = async () => {
       const displayDate = data.publishedAt || data.timestamp;
       if(displayDate) {
         const ts = document.createElement('div');
-        ts.textContent = `Published ${displayDate.toDate().toLocaleDateString()}`;
+        ts.textContent = `Published ${formatPublicationDate(displayDate.toDate())}`;
         ts.style.fontSize = '12px';
         ts.style.color = '#555';
         ts.style.marginBottom = '6px';
@@ -316,7 +317,7 @@ window.onload = async () => {
       const titleMatch = c.title?.toLowerCase().includes(query);
       const tagText = (c.tags || []).join(' ').toLowerCase();
       const tagSearchMatch = tagText.includes(query);
-      const dateMatch = (c.publishedAt || c.timestamp)?.toDate().toLocaleString().toLowerCase().includes(query);
+      const dateMatch = formatPublicationDate((c.publishedAt || c.timestamp)?.toDate()).includes(query);
       const selectedTagMatch = !selectedTag || (c.tags || []).includes(selectedTag);
       return (titleMatch || tagSearchMatch || dateMatch) && selectedTagMatch;
     });

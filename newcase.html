@@ -90,6 +90,11 @@
   .privacy-check input { margin-top:3px; }
   #caseFields { border:0; padding:0; margin:0; min-width:0; }
   .editor-actions { display:flex; align-items:center; gap:16px; }
+  .publication-date-control { display:flex; gap:8px; align-items:center; }
+  .publication-date-control > input { min-width:0; flex:1; }
+  .publication-calendar { position:relative; flex:0 0 44px; height:44px; display:grid; place-items:center; border:1px solid #ccd7d0; border-radius:9px; background:white; }
+  .publication-calendar input { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+  .publication-calendar:focus-within { outline:3px solid #e9662855; }
 </style>
 <link rel="stylesheet" href="design-system.css?v=5">
 <link rel="stylesheet" href="ui-feedback.css">
@@ -140,8 +145,11 @@
       <select id="status"><option value="draft">Save as draft</option><option value="published">Publish now</option></select>
     </div>
     <div class="form-group">
-      <label for="publishedDate">Publication date</label>
-      <input type="date" id="publishedDate" required>
+      <label for="publishedDate">Publication date (DD/MM/YY)</label>
+      <div class="publication-date-control">
+        <input type="text" id="publishedDate" placeholder="DD/MM/YY" maxlength="8" required aria-label="Publication date (DD/MM/YY)">
+        <span class="publication-calendar"><span aria-hidden="true">📅</span><input type="date" id="publicationCalendar" aria-label="Choose publication date from calendar"></span>
+      </div>
     </div>
   </div>
 
@@ -172,6 +180,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-auth.js"></script>
+<script src="publication-date.js"></script>
 <script src="case-formatting.js"></script>
 
 <script>
@@ -196,7 +205,27 @@ const today = new Date();
 function dateInputValue(date) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
-document.getElementById('publishedDate').value = dateInputValue(today);
+const publicationInput = document.getElementById('publishedDate');
+const publicationCalendar = document.getElementById('publicationCalendar');
+let publicationReference = today;
+function setPublicationDate(date) {
+  publicationReference = date;
+  publicationInput.value = formatPublicationDate(date);
+  publicationCalendar.value = dateInputValue(date);
+  publicationInput.setCustomValidity('');
+}
+setPublicationDate(today);
+publicationCalendar.addEventListener('change', () => {
+  if (publicationCalendar.value) setPublicationDate(new Date(`${publicationCalendar.value}T12:00:00`));
+});
+publicationInput.addEventListener('input', () => {
+  const date = parsePublicationDate(publicationInput.value, publicationReference);
+  publicationInput.setCustomValidity(date ? '' : 'Enter a valid date as DD/MM/YY.');
+  if (date) {
+    publicationReference = date;
+    publicationCalendar.value = dateInputValue(date);
+  }
+});
 
 async function loadEditor() {
   await adminAccess;
@@ -216,7 +245,7 @@ async function loadEditor() {
     document.getElementById('duration').value = data.durationMinutes ?? '';
     document.getElementById('status').value = data.status || 'published';
     const publicationDate = data.publishedAt || data.timestamp;
-    if (publicationDate?.toDate) document.getElementById('publishedDate').value = dateInputValue(publicationDate.toDate());
+    if (publicationDate?.toDate) setPublicationDate(publicationDate.toDate());
     uploadedFiles = (data.files || []).map(file => ({...file}));
     uploadedFiles.forEach(addFilePreview);
     uploadStatus.textContent = `${uploadedFiles.length} attachment(s). Add more files or remove an attachment to replace it. Changes take effect when saved.`;
@@ -320,9 +349,9 @@ saveBtn.addEventListener('click', async ()=>{
   if (!document.getElementById('duration').checkValidity()) return await appAlert('Discussion time must be a whole number from 1 to 240 minutes.');
   const status=document.getElementById('status').value;
   if (status === 'published') info = formatClinicalHeadings(info);
-  const publishedDateValue=document.getElementById('publishedDate').value;
-  if(!publishedDateValue || !document.getElementById('publishedDate').checkValidity()) return await appAlert('A valid publication date is required.');
-  const publishedAt=firebase.firestore.Timestamp.fromDate(new Date(`${publishedDateValue}T12:00:00`));
+  const publishedDate = parsePublicationDate(publicationInput.value, publicationReference);
+  if(!publishedDate) return await appAlert('Enter a valid publication date as DD/MM/YY, for example 02/09/26.');
+  const publishedAt=firebase.firestore.Timestamp.fromDate(publishedDate);
   const filesForFirestore=(uploadedFiles||[]).map(f=>({...f,name:f.name||'Case attachment',url:f.url,previewUrl:f.previewUrl||f.url,type:f.type}));
   isSaving = true;
   saveBtn.disabled = true;

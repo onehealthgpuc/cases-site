@@ -204,6 +204,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="firebase-auth.js"></script>
+<script src="publication-date.js"></script>
 <script src="case-formatting.js"></script>
 
 <script>
@@ -234,7 +235,8 @@ window.onload = async () => {
     document.getElementById('caseTitle').textContent = data.title;
 
     const meta = document.getElementById('caseMeta');
-    const publicationLabel = data.publishedAt?.toDate ? `Published ${data.publishedAt.toDate().toLocaleDateString()}` : '';
+    const publicationDate = data.publishedAt || data.timestamp;
+    const publicationLabel = publicationDate?.toDate ? `Published ${formatPublicationDate(publicationDate.toDate())}` : '';
     [...(data.tags || []), data.difficulty, data.durationMinutes ? `${data.durationMinutes} min` : '', publicationLabel].filter(Boolean).forEach(value => {
       const chip=document.createElement('span'); chip.className='meta-chip'; chip.textContent=value; meta.appendChild(chip);
     });
