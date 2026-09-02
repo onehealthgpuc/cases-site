@@ -55,10 +55,12 @@ main { max-width:980px!important; margin:30px auto!important; padding:30px!impor
 
 body > h1#caseTitle { max-width:980px; margin:30px auto 12px; padding:0 24px; font-size:clamp(25px,4vw,36px); letter-spacing:-.035em; line-height:1.18; }
 #caseMeta { max-width:980px; margin:0 auto 18px!important; padding:0 24px; justify-content:flex-start!important; }
-#filesContainer,#formattingBtns,#caseInfo,#saveChangesBtn,#auditInfo { max-width:930px; margin-left:auto!important; margin-right:auto!important; }
+#filesContainer,#formattingBtns,#caseInfo,#auditInfo { max-width:930px; margin-left:auto!important; margin-right:auto!important; }
 #filesContainer { padding:18px!important; background:var(--oh-white); border:1px solid var(--oh-line); border-radius:14px; }
 #caseInfo { min-height:220px!important; padding:28px!important; background:var(--oh-white)!important; border:1px solid var(--oh-line)!important; border-radius:14px!important; box-shadow:0 7px 24px #17201d0b; font-size:17px!important; line-height:1.72!important; }
 #auditInfo { padding:12px 0 35px; color:var(--oh-muted)!important; }
+.case-save-actions { max-width:930px; margin:14px auto 0; display:flex; justify-content:flex-end; }
+.case-save-actions #saveChangesBtn { margin:0!important; }
 #controls { flex-wrap:wrap; justify-content:flex-end; margin:0!important; }
 #imgModal { align-items:center!important; justify-content:center!important; padding:72px 20px 40px!important; }
 #zoomWrapper { margin:auto!important; }
@@ -78,4 +80,4 @@ th,td { padding:12px 10px!important; border-bottom:1px solid var(--oh-line)!impo
 #forgotBtn { color:var(--oh-orange-dark)!important; }
 
 @media(max-width:900px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.controls #newCaseBtn{margin-left:0}}
-@media(max-width:620px){header{padding:11px 15px!important}main{margin:15px!important;padding:20px!important}.page-heading,.controls,.cards{margin-left:14px!important;margin-right:14px!important}.cards{grid-template-columns:1fr}.controls>*{flex:1 1 calc(50% - 8px)}.controls #searchInput,.controls #tagFilter{flex-basis:100%}#userStatus{flex-basis:100%;text-align:left}.metadata-grid,.add-grid{grid-template-columns:1fr!important}body>h1#caseTitle,#caseMeta{padding-left:15px;padding-right:15px}#filesContainer,#formattingBtns,#caseInfo,#saveChangesBtn,#auditInfo{margin-left:14px!important;margin-right:14px!important}}
+@media(max-width:620px){header{padding:11px 15px!important}main{margin:15px!important;padding:20px!important}.page-heading,.controls,.cards{margin-left:14px!important;margin-right:14px!important}.cards{grid-template-columns:1fr}.controls>*{flex:1 1 calc(50% - 8px)}.controls #searchInput,.controls #tagFilter{flex-basis:100%}#userStatus{flex-basis:100%;text-align:left}.metadata-grid,.add-grid{grid-template-columns:1fr!important}body>h1#caseTitle,#caseMeta{padding-left:15px;padding-right:15px}#filesContainer,#formattingBtns,#caseInfo,#auditInfo,.case-save-actions{margin-left:14px!important;margin-right:14px!important}.case-save-actions #saveChangesBtn{width:100%}}
