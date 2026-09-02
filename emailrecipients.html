@@ -15,7 +15,9 @@
   button { cursor:pointer; font-size:12px; border:none; background:none; }
 </style>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-auth.js"></script>
 </head>
 <body>
 
@@ -26,17 +28,8 @@
 <ul id="emailList"></ul>
 
 <script>
-  // Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyD3e8G3s9Hwk5Kf6Ay3L58RTjyAkL-xr4I",
-    authDomain: "medical-cases-c4809.firebaseapp.com",
-    projectId: "medical-cases-c4809",
-    storageBucket: "medical-cases-c4809.appspot.com",
-    messagingSenderId: "591206005422",
-    appId: "1:591206005422:web:7834dc84e5eebd4b4b8b3f"
-  };
-  firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
+  const adminAccess = requireAccess('admin');
 
   const newEmailInput = document.getElementById('newEmail');
   const saveEmailBtn = document.getElementById('saveEmail');
@@ -44,6 +37,7 @@
 
   // Render all emails
   async function renderEmails() {
+    await adminAccess;
     emailList.innerHTML = '';
     const snapshot = await db.collection('EmailRecipients').orderBy('email').get();
     snapshot.docs.forEach(doc => {
@@ -82,6 +76,7 @@
 
   // Add new email
   saveEmailBtn.addEventListener('click', async () => {
+    await adminAccess;
     const email = newEmailInput.value.trim();
     if(!email) return alert('Enter an email!');
     try {

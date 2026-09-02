@@ -119,7 +119,9 @@
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-auth.js"></script>
 
 <script>
 const cloudName = 'dsc0hziur';
@@ -132,17 +134,8 @@ const saveBtn = document.getElementById('saveBtn');
 const noteInput = document.getElementById('noteInput');
 let uploadedFiles = [];
 
-const firebaseConfig = {
-  apiKey: "AIzaSyD3e8G3s9Hwk5Kf6Ay3L58RTjyAkL-xr4I",
-  authDomain: "medical-cases-c4809.firebaseapp.com",
-  projectId: "medical-cases-c4809",
-  storageBucket: "medical-cases-c4809.appspot.com",
-  messagingSenderId: "591206005422",
-  appId: "1:591206005422:web:7834dc84e5eebd4b4b8b3f",
-  measurementId: "G-B6P6BG0D9K"
-};
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const adminAccess = requireAccess('admin');
 
 function formatText(command,value=null){ document.execCommand(command,false,value); }
 
@@ -162,6 +155,7 @@ async function uploadToCloudinary(file){
 }
 
 fileInput.addEventListener('change', async (e)=>{
+  await adminAccess;
   previewContainer.innerHTML='';
   uploadedFiles=[];
   const files=Array.from(e.target.files||[]);
@@ -178,6 +172,7 @@ fileInput.addEventListener('change', async (e)=>{
 });
 
 saveBtn.addEventListener('click', async ()=>{
+  await adminAccess;
   const title=document.getElementById('title').value.trim();
   const info=noteInput.innerHTML.trim();
   if(!title) return alert('Title is required');

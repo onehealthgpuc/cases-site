@@ -101,9 +101,7 @@
     text-align: center;
   }
 
-  /* Search & Admin inputs slightly wider */
-  #searchInput,
-  #adminCode {
+  #searchInput {
     min-width: 100px;
     text-align: left;
 
@@ -131,7 +129,8 @@
     <button id="newCaseBtn" onclick="window.location.href='newcase.html'">+ New Case</button>
     <button id="pingBtn" title="Send Ping">📩</button>
     <button id="settingsIcon" class="control-item">⚙️</button>
-    <input type="text" id="adminCode" placeholder="Admin code">
+    <span id="userStatus"></span>
+    <button onclick="signOut()">Sign out</button>
   </div>
 
   <!-- Cases container -->
@@ -139,37 +138,34 @@
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-auth.js"></script>
 
 <!-- EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 
 <script>
 window.onload = async () => {
-  // --- Initialize Firebase ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyD3e8G3s9Hwk5Kf6Ay3L58RTjyAkL-xr4I",
-    authDomain: "medical-cases-c4809.firebaseapp.com",
-    projectId: "medical-cases-c4809",
-    storageBucket: "medical-cases-c4809.appspot.com",
-    messagingSenderId: "591206005422",
-    appId: "1:591206005422:web:7834dc84e5eebd4b4b8b3f",
-    measurementId: "G-B6P6BG0D9K"
-  };
-  firebase.initializeApp(firebaseConfig);
+  const access = await requireAccess();
+  const isAdmin = access.role === 'admin';
   const db = firebase.firestore();
 
   // --- Initialize EmailJS ---
   emailjs.init("SlgDGx0oPoAoDrWia");
 
   const container = document.getElementById('casesContainer');
-  const adminInput = document.getElementById('adminCode');
   const searchInput = document.getElementById('searchInput');
   const settingsIcon = document.getElementById('settingsIcon');
   const pingBtn = document.getElementById('pingBtn');
 
   let allCases = [];
-  let deleteCodeEntered = false;
+  document.getElementById('userStatus').textContent = `${access.user.email} (${access.role})`;
+  document.getElementById('newCaseBtn').style.display = isAdmin ? '' : 'none';
+  settingsIcon.style.display = isAdmin ? '' : 'none';
+  pingBtn.style.display = isAdmin ? '' : 'none';
+
+  let deleteCodeEntered = isAdmin;
 
   // --- Load Cases ---
   async function loadCases() {
@@ -267,14 +263,6 @@ window.onload = async () => {
       container.appendChild(card);
     });
   }
-
-  // --- Admin delete code ---
-  adminInput.addEventListener('input', () => {
-    deleteCodeEntered = adminInput.value === 'MED122';
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.style.display = deleteCodeEntered ? 'inline-block' : 'none';
-    });
-  });
 
   // --- Search ---
   searchInput.addEventListener('input', e => {
