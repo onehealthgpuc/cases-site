@@ -244,7 +244,8 @@ window.onload = async () => {
     document.getElementById('caseTitle').textContent = data.title;
     document.getElementById('statusControl').value = data.status || 'published';
     const meta = document.getElementById('caseMeta');
-    [...(data.tags || []), data.difficulty, data.durationMinutes ? `${data.durationMinutes} min` : ''].filter(Boolean).forEach(value => {
+    const publicationLabel = data.publishedAt?.toDate ? `Published ${data.publishedAt.toDate().toLocaleDateString()}` : '';
+    [...(data.tags || []), data.difficulty, data.durationMinutes ? `${data.durationMinutes} min` : '', publicationLabel].filter(Boolean).forEach(value => {
       const chip=document.createElement('span'); chip.className='meta-chip'; chip.textContent=value; meta.appendChild(chip);
     });
     const created = data.createdBy?.email ? `Created by ${data.createdBy.email}` : '';

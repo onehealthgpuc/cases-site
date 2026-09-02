@@ -238,9 +238,10 @@ window.onload = async () => {
       }
 
       // Timestamp
-      if(data.timestamp) {
+      const displayDate = data.publishedAt || data.timestamp;
+      if(displayDate) {
         const ts = document.createElement('div');
-        ts.textContent = data.timestamp.toDate().toLocaleString();
+        ts.textContent = `Published ${displayDate.toDate().toLocaleDateString()}`;
         ts.style.fontSize = '12px';
         ts.style.color = '#555';
         ts.style.marginBottom = '6px';

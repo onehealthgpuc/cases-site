@@ -80,6 +80,7 @@
   #saveBtn:hover { background:#e65c00; }
   .metadata-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; }
   select, input[type="number"] { width:100%; padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-size:16px; }
+  input[type="date"] { width:100%; padding:12px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box; font-size:16px; }
   .privacy-check { display:flex; gap:10px; align-items:flex-start; padding:14px; background:#fff4e8; border:1px solid #f06a22; border-radius:6px; }
   .privacy-check input { margin-top:3px; }
 </style>
@@ -125,6 +126,10 @@
       <label for="status">Visibility</label>
       <select id="status"><option value="draft">Save as draft</option><option value="published">Publish now</option></select>
     </div>
+    <div class="form-group">
+      <label for="publishedDate">Publication date</label>
+      <input type="date" id="publishedDate" required>
+    </div>
   </div>
 
   <div class="form-group">
@@ -165,6 +170,8 @@ let uploadedFiles = [];
 
 const db = firebase.firestore();
 const adminAccess = requireAccess('admin');
+const today = new Date();
+document.getElementById('publishedDate').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
 function formatText(command,value=null){ document.execCommand(command,false,value); }
 
@@ -214,11 +221,14 @@ saveBtn.addEventListener('click', async ()=>{
   const difficulty=document.getElementById('difficulty').value;
   const durationMinutes=Number(document.getElementById('duration').value)||null;
   const status=document.getElementById('status').value;
+  const publishedDateValue=document.getElementById('publishedDate').value;
+  if(!publishedDateValue) return alert('Publication date is required.');
+  const publishedAt=firebase.firestore.Timestamp.fromDate(new Date(`${publishedDateValue}T12:00:00`));
   const filesForFirestore=(uploadedFiles||[]).map(f=>({name:f.name,url:f.url,type:f.type}));
   try{
     const docRef=await db.collection('MedicalCases').add({
       title, info, files:filesForFirestore,
-      tags, difficulty, durationMinutes, status,
+      tags, difficulty, durationMinutes, status, publishedAt,
       deidentifiedConfirmed:true,
       createdBy:{uid:access.user.uid,email:access.user.email},
       updatedBy:{uid:access.user.uid,email:access.user.email},
