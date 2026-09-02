@@ -19,14 +19,16 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-auth.js"></script>
+<link rel="stylesheet" href="design-system.css">
 </head>
 <body>
 
-<h2>Email Recipients</h2>
-<input type="text" id="newEmail" placeholder="Enter email address">
-<button id="saveEmail">Add Email</button>
-
-<ul id="emailList"></ul>
+<main>
+  <div class="page-heading"><h1>Email recipients</h1><p>Manage who receives notifications about newly published cases.</p></div>
+  <input type="text" id="newEmail" placeholder="Enter email address">
+  <button id="saveEmail">Add recipient</button>
+  <ul id="emailList"></ul>
+</main>
 
 <script>
   const db = firebase.firestore();
