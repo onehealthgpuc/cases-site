@@ -184,7 +184,7 @@ function setDrawingMode(enabled) {
 function toggleDrawingMode() { setDrawingMode(!drawingMode); }
 function updateContrast(value) {
   contrastLevel = Math.max(50, Math.min(250, Number(value) || 100));
-  imgModalContent.style.filter = `contrast(${contrastLevel}%)`;
+  imgModalContent.style.setProperty('--viewer-contrast', String(contrastLevel / 100));
   if (contrastSlider) contrastSlider.value = String(contrastLevel);
   if (contrastValue) contrastValue.textContent = `${contrastLevel}%`;
 }
@@ -226,4 +226,6 @@ drawCanvas.addEventListener('pointermove', event => {
 });
 drawCanvas.addEventListener('pointerup', () => drawing = false);
 drawCanvas.addEventListener('pointercancel', () => drawing = false);
+contrastSlider?.addEventListener('input', event => updateContrast(event.target.value));
+contrastSlider?.addEventListener('change', event => updateContrast(event.target.value));
 window.addEventListener('resize', applyZoom);
