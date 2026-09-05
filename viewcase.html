@@ -145,7 +145,7 @@
 </style>
 
 <link rel="stylesheet" href="design-system.css?v=5">
-<link rel="stylesheet" href="case-layout.css?v=6">
+<link rel="stylesheet" href="case-layout.css?v=7">
 <link rel="stylesheet" href="ui-feedback.css">
 <script src="ui-dialogs.js"></script>
 <link rel="icon" href="favicon.ico" sizes="any">
@@ -186,9 +186,12 @@
     <button onclick="zoomOut()" aria-label="Zoom out">−</button>
     <button onclick="resetZoom()" aria-label="Fit whole page">Fit page</button>
     <button onclick="zoomIn()" aria-label="Zoom in">＋</button>
-    <label class="contrast-control" for="contrastSlider">Contrast
-      <input id="contrastSlider" type="range" min="50" max="250" step="10" value="100" oninput="updateContrast(this.value)" />
-      <output id="contrastValue" for="contrastSlider">100%</output>
+    <label class="contrast-control" for="contrastSlider">
+      <span>Contrast</span>
+      <span class="contrast-slider-row">
+        <input id="contrastSlider" type="range" min="50" max="250" step="10" value="100" oninput="updateContrast(this.value)" />
+        <output id="contrastValue" for="contrastSlider">100%</output>
+      </span>
     </label>
     <button onclick="updateContrast(100)" aria-label="Reset contrast">Reset contrast</button>
     <button onclick="closeViewer()" aria-label="Close viewer">✕</button>
