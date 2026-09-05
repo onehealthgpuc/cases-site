@@ -30,7 +30,7 @@
 <body>
 <main>
   <h1>User roles</h1>
-  <p class="notice">Invite a person by email. They will receive a secure Firebase email and choose their own password. The temporary system-generated password is never displayed or shared.</p>
+  <p class="notice">Invite a person by email. They will receive Firebase’s secure password link, then a prepared OneHealth Gmail message will open so you can send the invitation explanation. The temporary system-generated password is never displayed or shared.</p>
   <div class="add-grid">
     <input id="email" type="email" placeholder="User email" aria-label="User email">
     <input id="nickname" type="text" maxlength="40" placeholder="Nickname (e.g. Xlyn)" aria-label="Nickname" aria-describedby="nicknameHelp">
@@ -59,6 +59,13 @@
   function randomTemporaryPassword(){
     const bytes=new Uint8Array(24); crypto.getRandomValues(bytes);
     return `A!9${Array.from(bytes,b=>b.toString(36)).join('')}`;
+  }
+
+  function openInvitationEmail(email){
+    const subject='Invitation to the OneHealth Clinical Case Library';
+    const body=`Hello,\n\nYou have been invited to join the OneHealth Clinical Case Library.\n\nPlease open the separate secure password email from Firebase and click its link to create your password and access the library.\n\nThanks,\nOneHealth General Practice & Urgent Care`;
+    const params=new URLSearchParams({authuser:'onehealthgpuc@gmail.com',view:'cm',fs:'1',to:email,su:subject,body});
+    window.open(`https://mail.google.com/mail/?${params}`, '_blank', 'noopener');
   }
 
   async function renderUsers(){
@@ -110,7 +117,8 @@
       document.getElementById('email').value='';
       document.getElementById('nickname').value='';
       await renderUsers();
-      await appAlert(`Invitation sent to ${email}. They must use the email link to choose their password.`);
+      await appAlert(`The secure password link was sent to ${email}. Click OK to open the prepared OneHealth Gmail invitation, then review and send it.`);
+      openInvitationEmail(email);
     } catch(error) {
       console.error(error);
       if (provisioningAuth.currentUser) await provisioningAuth.signOut();

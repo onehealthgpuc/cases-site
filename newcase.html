@@ -318,14 +318,27 @@ fileInput.addEventListener('change', async (e)=>{
   const failed = [];
   try {
     await adminAccess;
-    for(const [index, file] of files.entries()){
-      uploadStatus.textContent = `Uploading ${index + 1} of ${files.length}: ${file.name}`;
-      try{
-        const uploaded=await uploadToCloudinary(file);
+    let completed = 0;
+    uploadStatus.textContent = `Uploading 0 of ${files.length} selected files…`;
+    const results = await Promise.all(files.map(async file => {
+      try {
+        return {file, uploaded: await uploadToCloudinary(file)};
+      } catch (error) {
+        console.error('Upload failed:', error);
+        return {file, error};
+      } finally {
+        completed++;
+        uploadStatus.textContent = `Uploading ${completed} of ${files.length} selected files…`;
+      }
+    }));
+    results.forEach(({file, uploaded}) => {
+      if (uploaded) {
         uploadedFiles.push(uploaded);
         addFilePreview(uploaded);
-      }catch(err){console.error('Upload failed:',err); failed.push(file.name);}
-    }
+      } else {
+        failed.push(file.name);
+      }
+    });
     uploadStatus.textContent = `${uploadedFiles.length} file(s) ready to save.` +
       (failed.length ? ` Upload failed for: ${failed.join(', ')}. Choose these files again to retry.` : '');
   } catch(err) {

@@ -181,10 +181,16 @@
 <!-- Attachment viewer -->
 <div id="imgModal" role="dialog" aria-modal="true" aria-label="Attachment viewer" style="display:none">
   <div id="buttonsOverlay">
+    <button id="drawingModeBtn" onclick="toggleDrawingMode()" aria-label="Toggle drawing" aria-pressed="false">Draw</button>
     <button onclick="clearDrawing()" aria-label="Clear drawing">Clear</button>
     <button onclick="zoomOut()" aria-label="Zoom out">−</button>
     <button onclick="resetZoom()" aria-label="Fit whole page">Fit page</button>
     <button onclick="zoomIn()" aria-label="Zoom in">＋</button>
+    <label class="contrast-control" for="contrastSlider">Contrast
+      <input id="contrastSlider" type="range" min="50" max="250" step="10" value="100" oninput="updateContrast(this.value)" />
+      <output id="contrastValue" for="contrastSlider">100%</output>
+    </label>
+    <button onclick="updateContrast(100)" aria-label="Reset contrast">Reset contrast</button>
     <button onclick="closeViewer()" aria-label="Close viewer">✕</button>
   </div>
   <div id="viewerStage">
