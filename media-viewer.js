@@ -6,13 +6,12 @@ const viewerStage = document.getElementById('viewerStage');
 const viewerStatus = document.getElementById('viewerStatus');
 const previousPage = document.getElementById('previousPage');
 const nextPage = document.getElementById('nextPage');
-const drawingModeBtn = document.getElementById('drawingModeBtn');
 const contrastSlider = document.getElementById('contrastSlider');
 const contrastValue = document.getElementById('contrastValue');
 let imageList = [], currentImageIndex = 0, zoomLevel = 1;
 let pdfDocument = null, pdfLoadingTask = null, pdfPage = 1;
 let viewerSession = 0, busy = false, ctx, drawing = false, returnFocus;
-let drawingMode = false, contrastLevel = 100;
+let contrastLevel = 100;
 let pdfLibrary;
 const pdfBase = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/';
 
@@ -39,7 +38,6 @@ function startViewer() {
   pdfDocument = null;
   busy = true;
   drawing = false;
-  setDrawingMode(false);
   updateContrast(100);
   zoomLevel = 1;
   imgModalContent.removeAttribute('src');
@@ -174,14 +172,6 @@ function zoomIn() { zoomLevel = Math.min(zoomLevel + 0.25, 4); applyZoom(); }
 function zoomOut() { zoomLevel = Math.max(zoomLevel - 0.25, 0.5); applyZoom(); }
 function resetZoom() { zoomLevel = 1; applyZoom(); viewerStage.scrollTo(0,0); }
 function clearDrawing() { ctx?.clearRect(0,0,drawCanvas.width,drawCanvas.height); }
-function setDrawingMode(enabled) {
-  drawingMode = Boolean(enabled);
-  drawing = false;
-  imgModal.classList.toggle('drawing-mode', drawingMode);
-  drawingModeBtn?.setAttribute('aria-pressed', String(drawingMode));
-  if (drawingModeBtn) drawingModeBtn.textContent = drawingMode ? 'Drawing on' : 'Draw';
-}
-function toggleDrawingMode() { setDrawingMode(!drawingMode); }
 function updateContrast(value) {
   contrastLevel = Math.max(50, Math.min(250, Number(value) || 100));
   imgModalContent.style.setProperty('--viewer-contrast', String(contrastLevel / 100));
@@ -197,7 +187,6 @@ function closeViewer() {
   imgModalContent.onload = imgModalContent.onerror = null;
   imgModalContent.removeAttribute('src');
   drawing = false;
-  setDrawingMode(false);
   viewerStage.classList.remove('is-scrollable');
   returnFocus?.focus();
 }
@@ -216,7 +205,8 @@ document.addEventListener('keydown', event => {
   }
 });
 drawCanvas.addEventListener('pointerdown', event => {
-  if (!ctx || busy || !drawingMode) return;
+  if (!ctx || busy || event.pointerType === 'touch') return;
+  event.preventDefault();
   drawing = true; drawCanvas.setPointerCapture(event.pointerId);
   ctx.beginPath(); ctx.moveTo(event.offsetX,event.offsetY);
 });
