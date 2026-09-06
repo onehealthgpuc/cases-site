@@ -65,7 +65,7 @@
   }
 
   async function renderUsers(){
-    await adminAccess;
+    const access=await adminAccess;
     const snapshot=await db.collection('users').get();
     rows.innerHTML='';
     snapshot.docs.forEach(doc=>{
