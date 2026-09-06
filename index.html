@@ -136,7 +136,7 @@
     <input type="text" id="searchInput" placeholder="Search...">
     <select id="tagFilter" aria-label="Filter by tag"><option value="">All tags</option></select>
     <button id="newCaseBtn" onclick="window.location.href='newcase.html'">+ New Case</button>
-    <button id="pingBtn" title="Email the latest case to active users" aria-label="Email the latest case to active users" disabled>📩</button>
+    <button id="pingBtn" title="Email the latest case to active users" aria-label="Email the latest case to active users" disabled>Email Latest Case</button>
     <button id="usersBtn">Users</button>
     <button id="passwordBtn">Change password</button>
     <button onclick="signOut()">Sign out</button>
@@ -349,7 +349,7 @@ window.onload = async () => {
       await appAlert(error.message || 'Unable to send the announcement. No email has been sent.');
     } finally {
       pingBtn.disabled = false;
-      pingBtn.textContent = '📩';
+      pingBtn.textContent = 'Email Latest Case';
     }
   });
 
