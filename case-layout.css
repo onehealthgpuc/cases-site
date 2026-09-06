@@ -1,7 +1,7 @@
 .case-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  align-items: stretch;
+  align-items: start;
   gap: 24px;
   max-width: 1180px;
   margin: 0 auto 24px;
@@ -15,8 +15,8 @@
   align-items: center;
   gap: 16px;
   width: 100%;
-  min-height: 100%;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
   margin: 0 !important;
 }
 
@@ -113,5 +113,5 @@ body.viewer-open { overflow: hidden; }
 
 @media (max-width: 760px) {
   .case-layout { grid-template-columns: minmax(0, 1fr); gap: 18px; padding: 0 14px; }
-  .case-layout #filesContainer { min-height: 0; }
+  .case-layout #filesContainer { height: auto !important; overflow: visible; }
 }

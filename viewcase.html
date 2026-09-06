@@ -145,7 +145,7 @@
 </style>
 
 <link rel="stylesheet" href="design-system.css?v=5">
-<link rel="stylesheet" href="case-layout.css?v=10">
+<link rel="stylesheet" href="case-layout.css?v=11">
 <link rel="stylesheet" href="ui-feedback.css">
 <script src="ui-dialogs.js"></script>
 <link rel="icon" href="favicon.ico" sizes="any">
@@ -326,6 +326,19 @@ window.onload = async () => {
 
     const info = linkify(data.info || '');
     document.getElementById('caseInfo').innerHTML = data.status === 'draft' ? info : formatClinicalHeadings(info);
+
+    const syncMediaPanelHeight = () => {
+      if (window.matchMedia('(max-width: 760px)').matches) {
+        filesContainer.style.height = '';
+        return;
+      }
+      const notesHeight = Math.ceil(document.querySelector('.case-notes').getBoundingClientRect().height);
+      filesContainer.style.height = `${notesHeight}px`;
+    };
+    requestAnimationFrame(syncMediaPanelHeight);
+    filesContainer.querySelectorAll('img').forEach(img => img.addEventListener('load', syncMediaPanelHeight, {once:true}));
+    new ResizeObserver(syncMediaPanelHeight).observe(document.querySelector('.case-notes'));
+    window.addEventListener('resize', syncMediaPanelHeight);
 
   } catch (err) {
     console.error('Error loading case:', err);
