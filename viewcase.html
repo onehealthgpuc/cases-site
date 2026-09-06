@@ -145,7 +145,7 @@
 </style>
 
 <link rel="stylesheet" href="design-system.css?v=5">
-<link rel="stylesheet" href="case-layout.css?v=11">
+<link rel="stylesheet" href="case-layout.css?v=12">
 <link rel="stylesheet" href="ui-feedback.css">
 <script src="ui-dialogs.js"></script>
 <link rel="icon" href="favicon.ico" sizes="any">
@@ -333,7 +333,18 @@ window.onload = async () => {
         return;
       }
       const notesHeight = Math.ceil(document.querySelector('.case-notes').getBoundingClientRect().height);
-      filesContainer.style.height = `${notesHeight}px`;
+      const firstAttachment = filesContainer.firstElementChild;
+      let firstAttachmentHeight = 0;
+      if (firstAttachment) {
+        const attachmentStyle = getComputedStyle(firstAttachment);
+        const containerStyle = getComputedStyle(filesContainer);
+        firstAttachmentHeight = firstAttachment.offsetHeight
+          + (parseFloat(attachmentStyle.marginTop) || 0)
+          + (parseFloat(attachmentStyle.marginBottom) || 0)
+          + (parseFloat(containerStyle.paddingTop) || 0)
+          + (parseFloat(containerStyle.paddingBottom) || 0);
+      }
+      filesContainer.style.height = `${Math.max(notesHeight, Math.ceil(firstAttachmentHeight))}px`;
     };
     requestAnimationFrame(syncMediaPanelHeight);
     filesContainer.querySelectorAll('img').forEach(img => img.addEventListener('load', syncMediaPanelHeight, {once:true}));
