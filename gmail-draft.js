@@ -14,7 +14,7 @@ function buildGmailDraftUrl(caseData, recipients) {
     'Please sign in with your OneHealth case-library account to view it.',
     '',
     'Kind regards,',
-    'OneHealth'
+    'OnehealthGPUC team'
   ].join('\n');
   const gmail = new URL('https://mail.google.com/mail/');
   gmail.searchParams.set('authuser', 'onehealthgpuc@gmail.com');

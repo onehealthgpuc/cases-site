@@ -138,7 +138,6 @@
     <button id="newCaseBtn" onclick="window.location.href='newcase.html'">+ New Case</button>
     <button id="pingBtn" title="Prepare new-case email in Gmail" aria-label="Prepare new-case email in Gmail" disabled>📩</button>
     <a id="gmailDraftLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Gmail draft</a>
-    <button id="settingsIcon" class="control-item">⚙️</button>
     <button id="usersBtn">Users</button>
     <button id="passwordBtn">Change password</button>
     <button onclick="signOut()">Sign out</button>
@@ -164,7 +163,6 @@ window.onload = async () => {
 
   const container = document.getElementById('casesContainer');
   const searchInput = document.getElementById('searchInput');
-  const settingsIcon = document.getElementById('settingsIcon');
   const pingBtn = document.getElementById('pingBtn');
   const usersBtn = document.getElementById('usersBtn');
   const tagFilter = document.getElementById('tagFilter');
@@ -173,7 +171,6 @@ window.onload = async () => {
   let allCases = [];
   document.getElementById('userStatus').textContent = access.nickname ? `Welcome ${access.nickname}!` : 'Welcome!';
   document.getElementById('newCaseBtn').style.display = isAdmin ? '' : 'none';
-  settingsIcon.style.display = isAdmin ? '' : 'none';
   pingBtn.style.display = isAdmin ? '' : 'none';
   usersBtn.style.display = isAdmin ? '' : 'none';
 
@@ -326,10 +323,6 @@ window.onload = async () => {
     tags.forEach(tag=>{const option=document.createElement('option');option.value=tag;option.textContent=tag;tagFilter.appendChild(option);});
   }
 
-  // --- Settings icon ---
-  settingsIcon.addEventListener('click', () => {
-    window.open('emailrecipients.html', '_blank');
-  });
   usersBtn.addEventListener('click', () => { window.open('users.html','_blank'); });
   passwordBtn.addEventListener('click', async () => {
     try {
@@ -357,16 +350,18 @@ window.onload = async () => {
       gmailTab.document.body.textContent = 'Preparing your new-case email…';
     }
     try {
-      const snapshot = await db.collection('EmailRecipients').get();
-      const emails = [...new Set(snapshot.docs.map(doc => doc.data().email)
+      const snapshot = await db.collection('users').get();
+      const emails = [...new Set(snapshot.docs.map(doc => doc.data())
+        .filter(user => user.role === 'viewer' || user.role === 'admin')
+        .map(user => user.email)
         .filter(email => typeof email === 'string').map(email => email.trim()).filter(Boolean))];
       if (!emails.length) {
         gmailTab?.close();
-        return await appAlert('Add email recipients using the settings button first.');
+        return await appAlert('There are no active users with an email address.');
       }
       if (emails.some(email => !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email))) {
         gmailTab?.close();
-        return await appAlert('An email recipient has an invalid address. Please correct the list in Settings.');
+        return await appAlert('An active user has an invalid email address. Please correct it on the Users page.');
       }
       const gmailUrl = buildGmailDraftUrl(latestCase, emails);
       draftLink.href = gmailUrl;
@@ -378,7 +373,7 @@ window.onload = async () => {
     } catch (error) {
       gmailTab?.close();
       console.error('Unable to prepare Gmail draft:', error);
-      await appAlert('Unable to load email recipients. Please try again. No email has been sent.');
+      await appAlert('Unable to load user email addresses. Please try again. No email has been sent.');
     } finally {
       pingBtn.disabled = false;
     }
