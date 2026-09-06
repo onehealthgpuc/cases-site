@@ -136,8 +136,7 @@
     <input type="text" id="searchInput" placeholder="Search...">
     <select id="tagFilter" aria-label="Filter by tag"><option value="">All tags</option></select>
     <button id="newCaseBtn" onclick="window.location.href='newcase.html'">+ New Case</button>
-    <button id="pingBtn" title="Prepare new-case email in Gmail" aria-label="Prepare new-case email in Gmail" disabled>📩</button>
-    <a id="gmailDraftLink" href="#" target="_blank" rel="noopener noreferrer" hidden>Open Gmail draft</a>
+    <button id="pingBtn" title="Email the latest case to active users" aria-label="Email the latest case to active users" disabled>📩</button>
     <button id="usersBtn">Users</button>
     <button id="passwordBtn">Change password</button>
     <button onclick="signOut()">Sign out</button>
@@ -152,7 +151,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-auth.js"></script>
 <script src="publication-date.js"></script>
-<script src="gmail-draft.js?v=2"></script>
+<script src="announcement-sender.js?v=1"></script>
 
 
 <script>
@@ -334,48 +333,23 @@ window.onload = async () => {
     }
   });
 
-  // Prepare an email in Gmail; the administrator sends it there.
+  // Send the latest published case to active users through OneHealth Gmail.
   pingBtn.addEventListener('click', async () => {
     if (pingBtn.disabled) return;
     const latestCase = allCases.find(item => item.status === 'published');
     if (!latestCase) return await appAlert('Publish a case before preparing an announcement.');
+    if (!await appConfirm(`Email “${latestCase.title || 'Untitled case'}” to all active users now?`)) return;
     pingBtn.disabled = true;
-    const draftLink = document.getElementById('gmailDraftLink');
-    draftLink.hidden = true;
-    // Reserve the tab during the click so fetching recipients does not block it.
-    const gmailTab = window.open('about:blank', '_blank');
-    if (gmailTab) {
-      gmailTab.opener = null;
-      gmailTab.document.title = 'Preparing Gmail draft…';
-      gmailTab.document.body.textContent = 'Preparing your new-case email…';
-    }
+    pingBtn.textContent = 'Sending…';
     try {
-      const snapshot = await db.collection('users').get();
-      const emails = [...new Set(snapshot.docs.map(doc => doc.data())
-        .filter(user => user.role === 'viewer' || user.role === 'admin')
-        .map(user => user.email)
-        .filter(email => typeof email === 'string').map(email => email.trim()).filter(Boolean))];
-      if (!emails.length) {
-        gmailTab?.close();
-        return await appAlert('There are no active users with an email address.');
-      }
-      if (emails.some(email => !/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(email))) {
-        gmailTab?.close();
-        return await appAlert('An active user has an invalid email address. Please correct it on the Users page.');
-      }
-      const gmailUrl = buildGmailDraftUrl(latestCase, emails);
-      draftLink.href = gmailUrl;
-      if (gmailTab && !gmailTab.closed) gmailTab.location.replace(gmailUrl);
-      else {
-        draftLink.hidden = false;
-        await appAlert('Your email is prepared. Click “Open Gmail draft” beside the envelope, then review it and click Send in Gmail.');
-      }
+      const result = await sendCaseAnnouncement(latestCase);
+      await appAlert(`Announcement sent to ${result.recipientCount} active user${result.recipientCount === 1 ? '' : 's'}.`);
     } catch (error) {
-      gmailTab?.close();
-      console.error('Unable to prepare Gmail draft:', error);
-      await appAlert('Unable to load user email addresses. Please try again. No email has been sent.');
+      console.error('Unable to send case announcement:', error);
+      await appAlert(error.message || 'Unable to send the announcement. No email has been sent.');
     } finally {
       pingBtn.disabled = false;
+      pingBtn.textContent = '📩';
     }
   });
 
