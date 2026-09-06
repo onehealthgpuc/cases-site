@@ -16,6 +16,9 @@
     .nickname-input { width:100%; min-width:110px; box-sizing:border-box; }
     input,select,button { padding:9px; border:1px solid #bbb; border-radius:5px; }
     button { background:#f06a22; color:#fff; border:0; cursor:pointer; }
+    button:disabled { opacity:.45; cursor:not-allowed; }
+    .user-actions { display:flex; flex-wrap:wrap; gap:7px; }
+    .remove-user { background:#8f3028; }
     table { width:100%; border-collapse:collapse; }
     th,td { text-align:left; padding:10px; border-bottom:1px solid #ddd; word-break:break-word; }
     @media(max-width:650px){.add-grid{grid-template-columns:1fr} table{font-size:12px}}
@@ -67,6 +70,7 @@
     rows.innerHTML='';
     snapshot.docs.forEach(doc=>{
       const data=doc.data();
+      if (data.role === 'disabled') return;
       const tr=document.createElement('tr');
       const nicknameInput=document.createElement('input');
       nicknameInput.type='text'; nicknameInput.maxLength=40; nicknameInput.className='nickname-input';
@@ -87,10 +91,26 @@
           console.error(error); await appAlert('Unable to update this user.');
         } finally { save.disabled=false; }
       };
+      const remove=document.createElement('button');remove.textContent='Remove access';remove.className='remove-user';
+      remove.disabled=doc.id===access.user.uid;
+      if(remove.disabled) remove.title='You cannot remove your own administrator access.';
+      remove.onclick=async()=>{
+        const email=data.email||'this user';
+        if(!await appConfirm(`Remove ${email} from the OneHealth Clinical Case Library? They will no longer be able to sign in.`)) return;
+        save.disabled=remove.disabled=true;
+        try {
+          await doc.ref.update({role:'disabled',removedAt:firebase.firestore.FieldValue.serverTimestamp(),removedBy:access.user.email});
+          tr.remove();
+          await appAlert(`${email} no longer has access.`);
+        } catch(error) {
+          console.error(error); save.disabled=false; remove.disabled=false;
+          await appAlert('Unable to remove this user.');
+        }
+      };
       [data.email||'Not recorded',doc.id].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td);});
       const nicknameCell=document.createElement('td');nicknameCell.appendChild(nicknameInput);tr.appendChild(nicknameCell);
       const roleCell=document.createElement('td');roleCell.appendChild(roleSelect);tr.appendChild(roleCell);
-      const actionCell=document.createElement('td');actionCell.appendChild(save);tr.appendChild(actionCell);rows.appendChild(tr);
+      const actionCell=document.createElement('td');actionCell.className='user-actions';actionCell.append(save,remove);tr.appendChild(actionCell);rows.appendChild(tr);
     });
   }
 
@@ -114,7 +134,20 @@
     } catch(error) {
       console.error(error);
       if (provisioningAuth.currentUser) await provisioningAuth.signOut();
-      await appAlert(error.code==='auth/email-already-in-use' ? 'That email already has an account. Use Forgot password to reset access, or contact an administrator.' : 'Unable to invite this user.');
+      if(error.code==='auth/email-already-in-use') {
+        const disabled=await db.collection('users').where('email','==',email).where('role','==','disabled').limit(1).get();
+        if(!disabled.empty) {
+          await disabled.docs[0].ref.update({role,nickname,removedAt:firebase.firestore.FieldValue.delete(),removedBy:firebase.firestore.FieldValue.delete(),reactivatedAt:firebase.firestore.FieldValue.serverTimestamp(),invitedBy:access.user.email});
+          await firebase.auth().sendPasswordResetEmail(email);
+          document.getElementById('email').value=''; document.getElementById('nickname').value='';
+          await renderUsers();
+          await appAlert(`Access restored for ${email}. A fresh password link was sent.`);
+        } else {
+          await appAlert('That email already has an active account. Update the existing user instead.');
+        }
+      } else {
+        await appAlert('Unable to invite this user.');
+      }
     } finally { button.disabled=false; button.textContent='Invite user'; }
   };
   renderUsers().catch(async error=>{console.error(error);await appAlert('Unable to load user roles.');});

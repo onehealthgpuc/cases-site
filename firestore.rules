@@ -20,7 +20,7 @@ service cloud.firestore {
       allow read: if signedIn() && (request.auth.uid == userId || admin());
       allow create: if admin() && request.resource.data.role in ['viewer', 'admin'];
       allow update: if admin()
-                    && request.resource.data.role in ['viewer', 'admin']
+                    && request.resource.data.role in ['viewer', 'admin', 'disabled']
                     && (request.auth.uid != userId || request.resource.data.role == 'admin');
       allow delete: if false;
     }
